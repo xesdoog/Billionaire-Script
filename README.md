@@ -53,7 +53,7 @@ This feature has two main options for bodyguards:
       - Simply does what it says. The driver will take you for a ride around town.
 
 ## Known Issues:
-- It's probably too early for listing issues as this script was made yesterday.
+- It's probably too early for listing issues at the moment.
 
 ## Credits:
 [YimMenu](https://github.com/YimMenu/YimMenu) for being an awesome project.
