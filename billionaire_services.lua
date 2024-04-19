@@ -539,7 +539,7 @@ billionaire_services:add_imgui(function()
             end
             TASK.TASK_GO_STRAIGHT_TO_COORD(guard_3, 2270.28, 3011.74, 45.6148, 1, 10000, 0, 0.0)
           end
-          spawned_bodyguards[1] = nil
+          spawned_bodyguards = {}
           dismissGuards:sleep(20000)
           PED.DELETE_PED(guard_1)
           PED.DELETE_PED(guard_2)
@@ -560,7 +560,7 @@ billionaire_services:add_imgui(function()
         script.run_in_fiber(function(dismissEscorts)
           TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 25, 786603)
           dismissEscorts:sleep(10000)
-          spawned_escorts[1] = nil
+          spawned_escorts = {}
           TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
           PED.DELETE_PED(escort_1)
           PED.DELETE_PED(escort_2)
