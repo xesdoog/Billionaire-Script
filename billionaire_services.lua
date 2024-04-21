@@ -61,15 +61,15 @@ local airports                  = {
   {name = "Sandy Shores Airfield",            hangar = vec3:new(1744.21, 3276.24, 41.1191),   runwayStart = vec3:new(1052.2, 3068.35, 41.6282),     runwayEnd = vec3:new(1718.24, 3254.43, 41.1363),    taxiPos = vec3:new(1705.72, 3254.61, 41.0139),    cutPos = vec3:new(-164.118, 1830.04, 996.586),  checkPos = vec3:new(633.196, 2975.52, 263.214),   checkPosHdng = 277.875,  heading = 150},
 }
 local bodyguards = {
-  {name = "Private Mercenaries",  pedType = "PED_TYPE_ARMY",                  modelHash = {a = 0x613E626C, b = 0x5076A73B, c = 0xB3F3EE34}, weaponHash = 0x83BF0278, vehicle = 2230595153,  vehCol = 0,   vehRadio = ""                   },  -- Carbine Rifle (can't do driveby's)
-  {name = "Private Security",     pedType = "PED_TYPE_COP",                   modelHash = {a = 0xF161D212, b = 0x2930C1AB, c = 0x55FE9B46}, weaponHash = 0x2B5EF5EC, vehicle = 666166960,   vehCol = 0,   vehRadio = ""                   },  -- Ceramic Pistol
-  {name = "Ballas OGs",           pedType = "PED_TYPE_GANG_AFRICAN_AMERICAN", modelHash = {a = 0x231AF63F, b = 0xABEF0004, c = 0xDB41B4EF}, weaponHash = 0x1B06D571, vehicle = 3431608412,  vehCol = 145, vehRadio = "RADIO_09_HIPHOP_OLD"},  -- Default Pistol
-  {name = "Families OGs",         pedType = "PED_TYPE_GANG_AFRICAN_AMERICAN", modelHash = {a = 0x33A464E5, b = 0xE83B93B7, c = 0x84302B09}, weaponHash = 0x1B06D571, vehicle = 3265236814,  vehCol = 53,  vehRadio = "RADIO_03_HIPHOP_NEW"},  -- //
-  {name = "Vagos Esses",          pedType = "PED_TYPE_GANG_PUERTO_RICAN",     modelHash = {a = 0x837B64DE, b = 0x5AA42C21, c = 0x964D12DC}, weaponHash = 0x1B06D571, vehicle = 2254540506,  vehCol = 88,  vehRadio = "RADIO_08_MEXICAN"   },  -- //
-  {name = "Lost MC",              pedType = "PED_TYPE_GANG_BIKER_1",          modelHash = {a = 0x32B11CDC, b = 0x4F46D607, c = 0xFD5537DE}, weaponHash = 0x1B06D571, vehicle = 2549763894,  vehCol = 0,   vehRadio = "RADIO_04_PUNK"      },  -- //
-  {name = "Armenian Mobsters",    pedType = "PED_TYPE_GANG_ALBANIAN",         modelHash = {a = 0xE7714013, b = 0xFDA94268, c = 0xF1E823A2}, weaponHash = 0x1B06D571, vehicle = 83136452,    vehCol = 111, vehRadio = "RADIO_13_JAZZ"      },  -- //
-  {name = "Cartel Sicarios",      pedType = "PED_TYPE_GANG_PUERTO_RICAN",     modelHash = {a = 0x995B3F9F, b = 0x7ED5AD78, c = 0xE6AC74A4}, weaponHash = 0xBFEFFF6D, vehicle = 4256087847,  vehCol = 0,   vehRadio = "RADIO_08_MEXICAN"   },  -- Assault Rifle (can't do driveby's)
-  {name = "Bad Bitches",          pedType = "PED_TYPE_PROSTITUTE",            modelHash = {a = 0x28ABF95, b = 0x81441B71, c = 0xAEEA76B5},  weaponHash = 350597077,  vehicle = 461465043,   vehCol = 30,  vehRadio = "RADIO_02_POP"       },  -- Tactical SMG
+  {name = "Private Mercenaries",  pedType = "PED_TYPE_ARMY",                  modelHash = {a = 0x613E626C, b = 0x5076A73B, c = 0xB3F3EE34}, weaponHash = {main = 0x83BF0278, sec = 350597077},  vehicle = 2230595153,  vehCol = 0,   vehRadio = ""                   },  -- Carbine Rifle + Tactical SMG
+  {name = "Private Security",     pedType = "PED_TYPE_COP",                   modelHash = {a = 0xF161D212, b = 0x2930C1AB, c = 0x55FE9B46}, weaponHash = {main = 0x2B5EF5EC, sec = 0},          vehicle = 666166960,   vehCol = 0,   vehRadio = ""                   },  -- Ceramic Pistol
+  {name = "Ballas OGs",           pedType = "PED_TYPE_GANG_AFRICAN_AMERICAN", modelHash = {a = 0x231AF63F, b = 0xABEF0004, c = 0xDB41B4EF}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 3431608412,  vehCol = 145, vehRadio = "RADIO_09_HIPHOP_OLD"},  -- Default Pistol
+  {name = "Families OGs",         pedType = "PED_TYPE_GANG_AFRICAN_AMERICAN", modelHash = {a = 0x33A464E5, b = 0xE83B93B7, c = 0x84302B09}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 3265236814,  vehCol = 53,  vehRadio = "RADIO_03_HIPHOP_NEW"},  -- //
+  {name = "Vagos Esses",          pedType = "PED_TYPE_GANG_PUERTO_RICAN",     modelHash = {a = 0x837B64DE, b = 0x5AA42C21, c = 0x964D12DC}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 2254540506,  vehCol = 88,  vehRadio = "RADIO_08_MEXICAN"   },  -- //
+  {name = "Lost MC",              pedType = "PED_TYPE_GANG_BIKER_1",          modelHash = {a = 0x32B11CDC, b = 0x4F46D607, c = 0xFD5537DE}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 2549763894,  vehCol = 0,   vehRadio = "RADIO_04_PUNK"      },  -- //
+  {name = "Armenian Mobsters",    pedType = "PED_TYPE_GANG_ALBANIAN",         modelHash = {a = 0xE7714013, b = 0xFDA94268, c = 0xF1E823A2}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 83136452,    vehCol = 111, vehRadio = "RADIO_13_JAZZ"      },  -- //
+  {name = "Cartel Sicarios",      pedType = "PED_TYPE_GANG_PUERTO_RICAN",     modelHash = {a = 0x995B3F9F, b = 0x7ED5AD78, c = 0xE6AC74A4}, weaponHash = {main = 0xBFEFFF6D, sec = 350597077},  vehicle = 4256087847,  vehCol = 0,   vehRadio = "RADIO_08_MEXICAN"   },  -- Assault Rifle + Tactical SMG
+  {name = "Bad Bitches",          pedType = "PED_TYPE_PROSTITUTE",            modelHash = {a = 0x28ABF95, b = 0x81441B71, c = 0xAEEA76B5},  weaponHash = {main = 350597077,  sec = 0},           vehicle = 461465043,   vehCol = 30,  vehRadio = "RADIO_02_POP"       },  -- Tactical SMG
 }
 local function updateAirports()
   filteredAirports = {}
@@ -127,6 +127,8 @@ local function pedConfig(ped)
     PED.SET_PED_COMBAT_ATTRIBUTES(ped, 42, true)
     PED.SET_PED_COMBAT_ATTRIBUTES(ped, 46, true)
     PED.SET_PED_COMBAT_ATTRIBUTES(ped, 50, true)
+    PED.SET_PED_COMBAT_ATTRIBUTES(ped, 54, true)
+    PED.SET_PED_COMBAT_ATTRIBUTES(ped, 55, true)
     PED.SET_PED_COMBAT_ATTRIBUTES(ped, 58, true)
     PED.SET_PED_COMBAT_ATTRIBUTES(ped, 61, true)
     PED.SET_PED_COMBAT_ATTRIBUTES(ped, 71, true)
@@ -417,8 +419,12 @@ billionaire_services:add_imgui(function()
           ENTITY.SET_ENTITY_HEADING(guard_1, myHeading - 180)
           PED.SET_PED_AS_GROUP_MEMBER(guard_1, myGroup)
           PED.SET_PED_NEVER_LEAVES_GROUP(guard_1, true)
-          WEAPON.GIVE_WEAPON_TO_PED(guard_1, bGuardData.weaponHash, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(guard_1, true, bGuardData.weaponHash)
+          WEAPON.GIVE_WEAPON_TO_PED(guard_1, bGuardData.weaponHash.main, 9999, false, true)
+          WEAPON.SET_PED_INFINITE_AMMO(guard_1, true, bGuardData.weaponHash.main)
+          if bGuardData.weaponHash.sec ~= 0 then
+            WEAPON.GIVE_WEAPON_TO_PED(guard_1, bGuardData.weaponHash.sec, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(guard_1, true, bGuardData.weaponHash.sec)
+          end
           PED.SET_GROUP_FORMATION(myGroup, 2)
           PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           table.insert(spawned_bodyguards, guard_1)
@@ -440,8 +446,12 @@ billionaire_services:add_imgui(function()
           ENTITY.SET_ENTITY_HEADING(guard_2, myHeading - 180)
           PED.SET_PED_AS_GROUP_MEMBER(guard_2, myGroup)
           PED.SET_PED_NEVER_LEAVES_GROUP(guard_2, true)
-          WEAPON.GIVE_WEAPON_TO_PED(guard_2, bGuardData.weaponHash, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(guard_2, true, bGuardData.weaponHash)
+          WEAPON.GIVE_WEAPON_TO_PED(guard_2, bGuardData.weaponHash.main, 9999, false, true)
+          WEAPON.SET_PED_INFINITE_AMMO(guard_2, true, bGuardData.weaponHash.main)
+          if bGuardData.weaponHash.sec ~= 0 then
+            WEAPON.GIVE_WEAPON_TO_PED(guard_2, bGuardData.weaponHash.sec, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(guard_2, true, bGuardData.weaponHash.sec)
+          end
           PED.SET_GROUP_FORMATION(myGroup, 2)
           PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           table.insert(spawned_bodyguards, guard_2)
@@ -463,8 +473,12 @@ billionaire_services:add_imgui(function()
           ENTITY.SET_ENTITY_HEADING(guard_3, myHeading - 180)
           PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
           PED.SET_PED_NEVER_LEAVES_GROUP(guard_3, true)
-          WEAPON.GIVE_WEAPON_TO_PED(guard_3, bGuardData.weaponHash, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(guard_3, true, bGuardData.weaponHash)
+          WEAPON.GIVE_WEAPON_TO_PED(guard_3, bGuardData.weaponHash.main, 9999, false, true)
+          WEAPON.SET_PED_INFINITE_AMMO(guard_3, true, bGuardData.weaponHash.main)
+          if bGuardData.weaponHash.sec ~= 0 then
+            WEAPON.GIVE_WEAPON_TO_PED(guard_3, bGuardData.weaponHash.sec, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(guard_3, true, bGuardData.weaponHash.sec)
+          end
           PED.SET_GROUP_FORMATION(myGroup, 2)
           PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           table.insert(spawned_bodyguards, guard_3)
@@ -527,8 +541,12 @@ billionaire_services:add_imgui(function()
           PED.SET_PED_NEVER_LEAVES_GROUP(escort_1, true)
           PED.SET_PED_CAN_EVASIVE_DIVE(escort_1, true)
           PED.SET_DRIVER_AGGRESSIVENESS(escort_1, 1.0)
-          WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash)
+          WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash.main, 9999, false, true)
+          WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash.main)
+          if bGuardData.weaponHash.sec ~= 0 then
+            WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash.sec, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash.sec)
+          end
           PED.SET_GROUP_FORMATION(myGroup, 2)
           PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_1, escortCar, -1, 0, 0)
@@ -552,8 +570,12 @@ billionaire_services:add_imgui(function()
           escort_2 = PED.CREATE_PED_INSIDE_VEHICLE(escortCar, bGuardData.pedType, bGuardData.modelHash.b, 0, true, false)
           PED.SET_PED_AS_GROUP_MEMBER(escort_2, myGroup)
           PED.SET_PED_NEVER_LEAVES_GROUP(escort_2, true)
-          WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash)
+          WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash.main, 9999, false, true)
+          WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash.main)
+          if bGuardData.weaponHash.sec ~= 0 then
+            WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash.sec, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash.sec)
+          end
           PED.SET_GROUP_FORMATION(myGroup, 2)
           PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_2, escortCar, 0, 0, 0)
@@ -577,8 +599,12 @@ billionaire_services:add_imgui(function()
           escort_3 = PED.CREATE_PED_INSIDE_VEHICLE(escortCar, bGuardData.pedType, bGuardData.modelHash.c, 1, true, false)
           PED.SET_PED_AS_GROUP_MEMBER(escort_3, myGroup)
           PED.SET_PED_NEVER_LEAVES_GROUP(escort_3, true)
-          WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash)
+          WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash.main, 9999, false, true)
+          WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash.main)
+          if bGuardData.weaponHash.sec ~= 0 then
+            WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash.sec, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash.sec)
+          end
           PED.SET_GROUP_FORMATION(myGroup, 2)
           PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_3, escortCar, 1, 0, 0)
