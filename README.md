@@ -55,5 +55,10 @@ This feature has two main options for bodyguards:
 ## Known Issues:
 - It's probably too early for listing issues at the moment.
 
+## TO DO:
+- [ ] Improve the flight system.
+- [ ] Fix the donuts option for the Personal Escort.
+- [ ] Improve the general experience.
+
 ## Credits:
 [YimMenu](https://github.com/YimMenu/YimMenu) for being an awesome project.
