@@ -35,9 +35,8 @@ This feature has two main options for bodyguards:
    - Select a group from the dropdown list then press **Spawn As Bodyguards**.
    - A group of 3 peds will spawn and follow you everywhere you go while also protecting you from the dangers that loom around Los Santos. Each group has a different type of weapon but they are all equally skilled at shooting people.
 3. **Spawn As Escorts**:
-   - Select a group from the dropdown list then press **Spawn As Escorts**. This group has their own vehicle which they will not leave. They can follow you if you get in a car yourself and start driving.
-   - You can get inside the escort car to do some fun things. Escorts can drive you around town, chauffeur you to your waypoint, do a burnout or start a random driveby shooting on innocent civilians. There's also an option to start doing donuts but to be able to do them in GTA, you need a lot of torque which I had issues modifying for the escort car. If you want to see how this option is supposed to work, **you can use YimMenu to add more acceleration**:
-     - While sitting inside the escort car, go to YimMenu's Vehicle tab > Handing > Other and set the acceleration multiplier to 4 or more. Enjoy mad donuts until I figure out how to properly implement it.
+   - Select a group from the dropdown list then press **Spawn As Escorts**. This group has their own vehicle which they can leave either by shooting a bullet near them, exiting your own vehicle or using a button in the script. They can use their vehicle to follow you if you get in a car yourself and start driving.
+   - You can get inside the escort vehicle to do some fun things. Escorts can drive you around town, chauffeur you to your waypoint, do a burnout or start a random driveby shooting on innocent civilians. There's also an option to start doing *MAAD* donuts and you can use the **Change Direction** button to turn them into *MAAD* drifts.
 
 ### Private Limo service:
 
@@ -45,20 +44,21 @@ This feature has two main options for bodyguards:
 
 ### Usage:
 1. Press the button to call for a limo. A Patriot Stretch will spawn in front of you.
-2. Approach one of the rear doors and press F to enter the vehicle.
+2. Approach one of the rear doors and press [F] to enter the vehicle.
  - Two options will aprear:
    - **Drive To Waypoint**:
       - Set a waypoint on the map then press this button to travel to it. The driver will obey traffic laws and get you there safely.
    - **Cruise Around**:
       - Simply does what it says. The driver will take you for a ride around town.
+   - *more options will probably be added later (call some bitches? idk)*
 
 ## Known Issues:
 - It's probably too early for listing issues at the moment.
 
 ## TO DO:
-- [ ] Improve the flight system.
-- [ ] Fix the donuts option for the Personal Escort.
-- [ ] Improve the general experience.
+- [ ] Improve the flight system. *(soon)*
+- [x] ~Fix the donuts option for the Personal Escort.~ ✅**Done.**
+- [ ] Improve the general experience. *(in-progress)*
 
 ## Credits:
 [YimMenu](https://github.com/YimMenu/YimMenu) for being an awesome project.
