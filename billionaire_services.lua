@@ -18,8 +18,17 @@ local carBlip                   = 0
 local limo                      = 0
 local limoDriver                = 0
 local donutDirection            = 7
-local started_landing           = false
+local initialFlight             = false
+local newFlight                 = false
+local flying                    = false
 local can_land                  = false
+local started_landing           = false
+local startLandingProcess       = false
+local showLandingSkip           = false
+local skippedLandingProcess     = false
+local jetDismissed              = false
+local showPilotLeavingMsg       = false
+local showBailMsg               = false
 local dismissed                 = false
 local dismissedGuards           = false
 local sittingInEscortCar        = false
@@ -33,9 +42,11 @@ local sittingInLimo             = false
 local limoStarted               = false
 local bsDebug                   = false
 local taskInProgress            = false
-local startFollowTask           = true
+local startFollowTask           = false
 local currentTask               = "None."
 local hangarPos                 = vector3
+local destination               = vector3
+local newDestination            = vector3
 local spawned_jet               = {}
 local spawned_pilot             = {}
 local spawned_limo              = {}
@@ -45,9 +56,9 @@ local spawned_escorts           = {}
 local spawned_SUV               = {}
 local guardBlips                = {}
 local airports                  = {
-  {name = "Los Santos International Airport", hangar = vec3:new(-979.294, -2993.9, 13.9451),  runwayStart = vec3:new(-1305.79, -2148.72, 13.9446),  runwayEnd = vec3:new(-1663.04, -2775.99, 13.9447),  taxiPos = vec3:new(-1046.74, -2971.01, 13.9487),  cutPos = vec3:new(-2204.82, -2554.53, 678.723)},
-  {name = "Fort Zancudo",                     hangar = vec3:new(-2140.81, 3255.64, 32.8103),  runwayStart = vec3:new(-1972.55, 2842.36, 32.8104),   runwayEnd = vec3:new(-2620.15, 3208.18, 32.8117),   taxiPos = vec3:new(-2166.8, 3203.57, 32.8049),    cutPos = vec3:new(-3341.66, 3578.68, 595.203) },
-  {name = "Sandy Shores Airfield",            hangar = vec3:new(1744.21, 3276.24, 41.1191),   runwayStart = vec3:new(1052.2, 3068.35, 41.6282),     runwayEnd = vec3:new(1624.41, 3233.22, 40.4115),    taxiPos = vec3:new(1705.72, 3254.61, 41.0139),    cutPos = vec3:new(-164.118, 1830.04, 996.586) },
+  {name = "Los Santos International Airport", hangar = vec3:new(-979.294, -2993.9, 13.9451),  runwayStart = vec3:new(-1305.79, -2148.72, 13.9446),  runwayEnd = vec3:new(-1663.04, -2775.99, 13.9447),  taxiPos = vec3:new(-1046.74, -2971.01, 13.9487),  cutPos = vec3:new(-2204.82, -2554.53, 678.723), checkPos = vec3:new(-860.534, -1476.28, 286.833), checkPosHdng = 143.321,  heading = 50},
+  {name = "Fort Zancudo",                     hangar = vec3:new(-2140.81, 3255.64, 32.8103),  runwayStart = vec3:new(-1972.55, 2842.36, 32.8104),   runwayEnd = vec3:new(-2598.1, 3199.13, 32.8118),    taxiPos = vec3:new(-2166.8, 3203.57, 32.8049),    cutPos = vec3:new(-3341.66, 3578.68, 595.203),  checkPos = vec3:new(-1487.91, 2553.82, 266.253),  checkPosHdng = 55.7258,  heading = 132},
+  {name = "Sandy Shores Airfield",            hangar = vec3:new(1744.21, 3276.24, 41.1191),   runwayStart = vec3:new(1052.2, 3068.35, 41.6282),     runwayEnd = vec3:new(1718.24, 3254.43, 41.1363),    taxiPos = vec3:new(1705.72, 3254.61, 41.0139),    cutPos = vec3:new(-164.118, 1830.04, 996.586),  checkPos = vec3:new(633.196, 2975.52, 263.214),   checkPosHdng = 277.875,  heading = 150},
 }
 local bodyguards = {
   {name = "Private Mercenaries",  pedType = "PED_TYPE_ARMY",                  modelHash = {a = 0x613E626C, b = 0x5076A73B, c = 0xB3F3EE34}, weaponHash = 0x83BF0278, vehicle = 2230595153,  vehCol = 0,   vehRadio = ""                   },  -- Carbine Rifle (can't do driveby's)
@@ -149,15 +160,17 @@ billionaire_services:add_imgui(function()
     local jetModel      = 0xB79F589E
     local pilotModel    = 0x864ED68E
     local copilotModel  = 0xE75B4B1C
-    if ImGui.Button("Spawn Private Jet") then
-      if airport_index == 0 then
-        jetHeading = 50
-      elseif airport_index == 1 then
-        jetHeading = 150
-      else
-        jetHeading = 132
-      end
-      if spawned_jet[1] == nil then
+    -- local locName       =
+    if spawned_jet[1] == nil then
+      if ImGui.Button("Spawn Private Jet") then
+        jetDismissed = false
+        if airport_index == 0 then
+          jetHeading = 50
+        elseif airport_index == 1 then
+          jetHeading = 150
+        else
+          jetHeading = 132
+        end
         script.run_in_fiber(function(privateJet)
           while not STREAMING.HAS_MODEL_LOADED(jetModel) do
             STREAMING.REQUEST_MODEL(jetModel)
@@ -171,7 +184,6 @@ billionaire_services:add_imgui(function()
           VEHICLE.SET_VEHICLE_STRONG(pJet, true)
           VEHICLE.SET_VEHICLE_ALLOW_HOMING_MISSLE_LOCKON(pJet, false, 0)
           VEHICLE.SET_VEHICLE_DOOR_OPEN(pJet, 0, false, false)
-          AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_35_DLC_HEI4_MLR")
           jetBlip = HUD.ADD_BLIP_FOR_ENTITY(pJet)
           HUD.SET_BLIP_SPRITE(jetBlip, 423)
           HUD.SET_BLIP_SCALE(jetBlip, 1.2)
@@ -180,7 +192,7 @@ billionaire_services:add_imgui(function()
             STREAMING.REQUEST_MODEL(pilotModel)
             coroutine.yield()
           end
-          myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
+          local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
           pilot = PED.CREATE_PED_INSIDE_VEHICLE(pJet, "PED_TYPE_CIVMALE", pilotModel, -1, true, false)
           ENTITY.SET_ENTITY_INVINCIBLE(pilot, true)
           table.insert(spawned_pilot, pilot)
@@ -204,132 +216,180 @@ billionaire_services:add_imgui(function()
           PED.SET_PED_CONFIG_FLAG(copilot, 398, true)
           PED.SET_PED_CONFIG_FLAG(copilot, 402, true)
           PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(copilot, true)
-        end)
-      else
-        gui.show_message("Billionaire Services", "You have already spawned a private jet.")
-      end
-    end
-    ImGui.SameLine()
-    if ImGui.Button("Dismiss Jet") then
-      for k, v in ipairs(spawned_jet) do
-        script.run_in_fiber(function()
-          if ENTITY.DOES_ENTITY_EXIST(v) then
-            ENTITY.SET_ENTITY_AS_MISSION_ENTITY(v, true, true)
-              VEHICLE.DELETE_VEHICLE(v)
-            table.remove(spawned_jet, k)
-          end
-        end)
-      end
-      for index, entity in ipairs(spawned_pilot) do
-        script.run_in_fiber(function()
-          if ENTITY.DOES_ENTITY_EXIST(entity) then
-            ENTITY.DELETE_ENTITY(entity)
-            table.remove(spawned_pilot, index)
-          end
-        end)
-      end
-    end
-    if ImGui.Button("Fly Around Waypoint") then
-      script.run_in_fiber(function(flyTo)
-        local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
-        if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
-          if HUD.DOES_BLIP_EXIST(waypoint) then
-            destination = HUD.GET_BLIP_COORDS(waypoint)
+          VEHICLE.SET_VEHICLE_ENGINE_ON(pJet, true, false, false)
+          if NETWORK.NETWORK_IS_SESSION_STARTED() then
+            AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_35_DLC_HEI4_MLR")
           else
-            gui.show_error("Private Jet", "Please set a waypoint on the map first!")
-            return
-          end
-          TASK.TASK_VEHICLE_DRIVE_TO_COORD(pilot, pJet, airportData.taxiPos.x, airportData.taxiPos.y, airportData.taxiPos.z, 5.0, 0, 0xB79F589E, 8388614, -1.0, -1.0)
-          flyTo:sleep(6000)
-          CAM.DO_SCREEN_FADE_OUT(1000)
-          flyTo:sleep(1000)
-          CAM.DO_SCREEN_FADE_IN(1000)
-          ENTITY.SET_ENTITY_COORDS(pJet, airportData.cutPos.x, airportData.cutPos.y, airportData.cutPos.z, true, true, true, true)
-          VEHICLE.SET_VEHICLE_FORWARD_SPEED(pJet, 100.0) --360km/h
-          VEHICLE.CONTROL_LANDING_GEAR(pJet, 1)
-          TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, destination.x, destination.y, destination.z + 600, 4, 100.0, 0, 90, 0, 0, 200)
-          flyTo:sleep(500)
-        else
-          gui.show_message("Private Jet", "Get in your private jet to be able to fly around")
-        end
-      end)
-    end
-    ImGui.Spacing()
-    ImGui.Spacing()
-    ImGui.Text("Landing Options:")
-    ImGui.Separator()
-    if can_land then
-      if ImGui.Button("Land At LSIA") then
-        local jetPos      = ENTITY.GET_ENTITY_COORDS(pJet, false)
-        local lsiaDist    = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, -860.534, -1476.28, 286.833)
-        local hangarDist  = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, -979.294, -2993.9, 13.9451)
-        script.run_in_fiber(function(lsia)
-          if hangarDist <= 100 then
-            gui.show_message("Private Jet", "Your private jet is already at LSIA!")
-            return
-          end
-          if lsiaDist > 200 and lsiaDist <= 2000 then
-            TASK.TASK_PLANE_LAND(pilot, pJet, -1305.79, -2148.72, 13.9446, -1663.04, -2775.99, 13.9447)
-            lsia:sleep(1000)
-            started_landing = true
-            hangarPos       = vec3:new(-979.294, -2993.9, 13.9451)
-            setHeading      = 50
-          elseif lsiaDist > 2000 then
-            TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, -860.534, -1476.28, 286.833, 4, 100.0, 0, 90, 0, 0, 200)
-          else
-            gui.show_message("Private Jet", "Too close to airport!")
-            return
-          end
-        end)
-      end
-      if ImGui.Button("Land In Fort Zancudo") then
-        local jetPos        = ENTITY.GET_ENTITY_COORDS(pJet, false)
-        local zancudoDist   = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, -1487.91, 2553.82, 266.253)
-        local hangarDist    = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, -2140.81, 3255.64, 32.8103)
-        script.run_in_fiber(function(zancudo)
-          if hangarDist <= 100 then
-            gui.show_message("Private Jet", "Your private jet is already in Fort Zancudo!")
-            return
-          end
-          if zancudoDist > 200 and zancudoDist <= 2000 then
-            TASK.TASK_PLANE_LAND(pilot, pJet, -1972.55, 2842.36, 32.8104, -2620.15, 3208.18, 32.8117)
-            zancudo:sleep(1000)
-            started_landing = true
-            hangarPos       = vec3:new(-2140.81, 3255.64, 32.8103)
-            setHeading      = 132
-          elseif zancudoDist > 2000 then
-            TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, -1487.91, 2553.82, 266.253, 4, 100.0, 0, 90, 0, 0, 200)
-          else
-            gui.show_message("Private Jet", "Too close to airport!")
-            return
-          end
-        end)
-      end
-      if ImGui.Button("Land In Sandy Shores") then
-        local jetPos      = ENTITY.GET_ENTITY_COORDS(pJet, false)
-        local sandyDist   = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, 633.196, 2975.52, 263.214)
-        local hangarDist  = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, 1731.53, 3309.03, 41.2235)
-        script.run_in_fiber(function(sandy)
-          if hangarDist <= 100 then
-            gui.show_message("Private Jet", "Your private jet is already in Sandy Shores!")
-            return
-          end
-          if sandyDist > 200 and sandyDist <= 2000 then
-            TASK.TASK_PLANE_LAND(pilot, pJet, 1052.2, 3068.35, 41.6282, 1715.62, 3261.5, 41.1267)
-            sandy:sleep(1000)
-            started_landing = true
-            hangarPos       = vec3:new(1744.21, 3276.24, 41.1191)
-            setHeading      = 150
-          elseif sandyDist > 2000 then
-            TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, 633.196, 2975.52, 263.214, 4, 100.0, 0, 90, 0, 0, 200)
-          else
-            gui.show_message("Private Jet", "Too close to airport!")
-            return
+            AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_22_DLC_BATTLE_MIX1_RADIO")
           end
         end)
       end
     else
-      ImGui.Text("Gain some altitude to be able to see landing\noptions.")
+      ImGui.Spacing();ImGui.Text("Jet Options:");ImGui.Separator()
+      if not jetDismissed then
+        if ImGui.Button("Dismiss Jet") then
+          if not flying then
+            showPilotLeavingMsg = true
+            jetDismissed        = true
+            script.run_in_fiber(function(dismissJet)
+              if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
+                TASK.TASK_LEAVE_VEHICLE(self.get_ped(), pJet, 256)
+                dismissJet:sleep(2000)
+              end
+              if ENTITY.DOES_ENTITY_EXIST(pilot) or ENTITY.DOES_ENTITY_EXIST(copilot) then
+                VEHICLE.SET_VEHICLE_ENGINE_ON(pJet, false, false, false)
+                TASK.TASK_LEAVE_VEHICLE(pilot, pJet, 256)
+                TASK.TASK_LEAVE_VEHICLE(copilot, pJet, 256)
+                gui.show_message("Private Jet", "Please wait for your pilots to leave.")
+                TASK.TASK_GO_STRAIGHT_TO_COORD(pilot, 2270.28, 3011.74, 45.6148, 1, 10000, 0, 0.0)
+                TASK.TASK_GO_STRAIGHT_TO_COORD(copilot, 2270.28, 3011.74, 45.6148, 1, 10000, 0, 0.0)
+                dismissJet:sleep(5000)
+                PED.DELETE_PED(pilot)
+                PED.DELETE_PED(copilot)
+                if ENTITY.DOES_ENTITY_EXIST(pJet) then
+                  ENTITY.SET_ENTITY_AS_MISSION_ENTITY(pJet, true, true)
+                  dismissJet:sleep(200)
+                  VEHICLE.DELETE_VEHICLE(pJet)
+                end
+              end
+              for k, _ in ipairs(spawned_jet) do
+                table.remove(spawned_jet, k)
+              end
+              for index, _ in ipairs(spawned_pilot) do
+                table.remove(spawned_pilot, index)
+              end
+            end)
+          else
+            gui.show_error("Private Jet", "Ask your pilot to land before dismissing your private jet.")
+            return
+          end
+        end
+        ImGui.SameLine();ImGui.Dummy(40, 1);ImGui.SameLine()
+        if not flying and not newFlight then
+          if ImGui.Button("Fly Around Waypoint") then
+            script.run_in_fiber(function(flyTo)
+              local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
+              if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
+                if HUD.DOES_BLIP_EXIST(waypoint) then
+                  destination = HUD.GET_BLIP_COORDS(waypoint)
+                else
+                  gui.show_error("Private Jet", "Please set a waypoint on the map first!")
+                  return
+                end
+                if NETWORK.NETWORK_IS_SESSION_STARTED() then
+                  AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_35_DLC_HEI4_MLR") -- music locker for online
+                else
+                  AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_22_DLC_BATTLE_MIX1_RADIO") -- LSUR for SP
+                end
+                TASK.TASK_VEHICLE_DRIVE_TO_COORD(pilot, pJet, airportData.taxiPos.x, airportData.taxiPos.y, airportData.taxiPos.z, 5.0, 0, 0xB79F589E, 8388614, 10.0, 10.0)
+                flyTo:sleep(6000)
+                CAM.DO_SCREEN_FADE_OUT(1000)
+                flyTo:sleep(1000)
+                CAM.DO_SCREEN_FADE_IN(1000)
+                ENTITY.SET_ENTITY_COORDS(pJet, airportData.cutPos.x, airportData.cutPos.y, airportData.cutPos.z, true, true, true, true)
+                VEHICLE.SET_VEHICLE_FORWARD_SPEED(pJet, 100.0) --360km/h
+                VEHICLE.CONTROL_LANDING_GEAR(pJet, 1)
+                TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, destination.x, destination.y, destination.z + 600, 4, 100.0, 0, 90, 0, 0, 200)
+                flyTo:sleep(500)
+                initialFlight = false
+                flying        = true
+              else
+                gui.show_message("Private Jet", "Get in your private jet to be able to fly around.")
+              end
+            end)
+          end
+        end
+      else
+        if showPilotLeavingMsg then
+          local timer = 0
+          ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
+          ImGui.Text("Your private jet has been dismissed. Please wait for your pilots to leave.")
+          ImGui.PopTextWrapPos()
+          timer = timer + 1
+          if timer > 50 then
+            showPilotLeavingMsg = false
+          end
+        end
+      end
+      if flying and not initialFlight then
+        if not startLandingProcess or not started_landing then
+          if ImGui.Button("Fly To New Waypoint") then
+            script.run_in_fiber(function(newWp)
+              local newWaypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
+              if HUD.DOES_BLIP_EXIST(newWaypoint) then
+                newDestination = HUD.GET_BLIP_COORDS(newWaypoint)
+                if newDestination ~= destination then
+                  TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, newDestination.x, newDestination.y, newDestination.z + 600, 4, 100.0, 0, 90, 0, 0, 200)
+                  newWp:sleep(500)
+                  newFlight = true
+                  flying    = true
+                else
+                  gui.show_error("Private Jet", "Please set a different waypoint on the map first!")
+                  return
+                end
+              else
+                gui.show_error("Private Jet", "Please set a waypoint on the map first!")
+                return
+              end
+            end)
+          end
+        end
+      end
+      ImGui.Spacing()
+      ImGui.Spacing()
+      ImGui.Text("Landing Options:")
+      ImGui.Separator()
+      if can_land then
+        if not startLandingProcess and not started_landing then
+          if ImGui.Button("Land At "..airportData.name) then
+            local jetPos      = ENTITY.GET_ENTITY_COORDS(pJet, false)
+            local hangarDist  = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, airportData.hangar.x, airportData.hangar.y, airportData.hangar.z)
+            if hangarDist <= 200 then
+              gui.show_message("Private Jet", "Your private jet is already at "..airportData.name)
+              return
+            else
+              gui.show_message("Private Jet", "Flying towards "..airportData.name.."...")
+              skippedLandingProcess = false
+              startLandingProcess   = true
+            end
+          end
+        else
+          if not showLandingSkip then
+            ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
+            ImGui.TextWrapped("Your pilot is now heading towards the airport. You can either wait for him to land your private jet or when you get closer to the runway, a skip button will appear which you can use to skip the landing process.")
+            ImGui.PopTextWrapPos()
+          end
+        end
+      else
+        if not showLandingSkip then
+          ImGui.Text("Gain some altitude to be able to see landing\noptions.")
+        end
+      end
+      if showLandingSkip then
+        if ImGui.Button("Skip Landing Process") then
+          skippedLandingProcess = true
+          script.run_in_fiber(function(skipLanding)
+            TASK.CLEAR_PED_TASKS(pilot)
+            TASK.CLEAR_PED_SECONDARY_TASK(pilot)
+            TASK.CLEAR_PRIMARY_VEHICLE_TASK(pJet)
+            VEHICLE.CONTROL_LANDING_GEAR(pJet, 0)
+            VEHICLE.SET_VEHICLE_FORWARD_SPEED(pJet, 0.0)
+            VEHICLE.BRING_VEHICLE_TO_HALT(pJet, 1.0, 1000, true)
+            CAM.DO_SCREEN_FADE_OUT(1000)
+            skipLanding:sleep(1000)
+            CAM.DO_SCREEN_FADE_IN(1000)
+            ENTITY.SET_ENTITY_COORDS(pJet, hangarPos.x, hangarPos.y, hangarPos.z, true, true, true, true)
+            ENTITY.SET_ENTITY_HEADING(pJet, setHeading)
+            VEHICLE.SET_VEHICLE_DOOR_OPEN(pJet, 0, false, false)
+            started_landing = false
+            initialFlight   = true
+            newFlight       = false
+            flying          = false
+            skipLanding:sleep(1000)
+            showLandingSkip = false
+          end)
+        end
+      end
     end
     ImGui.EndTabItem()
   end
@@ -456,7 +516,6 @@ billionaire_services:add_imgui(function()
           carBlip = HUD.ADD_BLIP_FOR_ENTITY(escortCar)
           HUD.SET_BLIP_SPRITE(carBlip, 229)
           HUD.SET_BLIP_SCALE(carBlip, 1.14)
-          PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(self.get_ped(), escortCar, 2, 0, 0)
           table.insert(spawned_SUV, escortCar)
           escort:sleep(200)
           while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.a) do
@@ -568,6 +627,7 @@ billionaire_services:add_imgui(function()
             TASK.TASK_GO_STRAIGHT_TO_COORD(guard_3, 2270.28, 3011.74, 45.6148, 1, 10000, 0, 0.0)
           end
           spawned_bodyguards = {}
+          spawned_bodyguards = {}
           dismissGuards:sleep(20000)
           PED.DELETE_PED(guard_1)
           PED.DELETE_PED(guard_2)
@@ -584,18 +644,32 @@ billionaire_services:add_imgui(function()
         return
       end
       if spawned_escorts[1] ~= nil then
-        dismissed     = true
-        doingDriveBy  = false
-        doDonuts      = false
-        doingBurnout  = false
-        driveStarted  = false
-        driveToWp     = false
+        dismissed = true
         script.run_in_fiber(function(dismissEscorts)
-          if sittingInEscortCar then
-            TASK.TASK_LEAVE_VEHICLE(self.get_ped(), escortCar, 0)
-            dismissEscorts:sleep(2000)
-          end
           if ENTITY.DOES_ENTITY_EXIST(escortCar) then
+            if taskInProgress then
+              TASK.CLEAR_PED_TASKS(escort_1)
+              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+              TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+              TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
+              taskInProgress  = false
+              startFollowTask = false
+              doingDriveBy    = false
+              doDonuts        = false
+              doingBurnout    = false
+              driveStarted    = false
+              driveToWp       = false
+            end
+            if sittingInEscortCar then
+              if not VEHICLE.IS_VEHICLE_STOPPED(escortCar) then
+                repeat
+                  dismissEscorts:sleep(500)
+                until
+                VEHICLE.IS_VEHICLE_STOPPED(escortCar) == true -- wait for the vehicle to come to a complete stop before exiting.
+              end
+              TASK.TASK_LEAVE_VEHICLE(self.get_ped(), escortCar, 0)
+              dismissEscorts:sleep(2000) -- the exit animation takes approximately 2s so this wait time prevents escorts from driving off while you're still in the process of exiting the vehicle.
+            end
             if escortLeftCar then
               TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
               TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
@@ -607,7 +681,12 @@ billionaire_services:add_imgui(function()
               TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
               PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
               escortLeftCar = false
-              dismissEscorts:sleep(6000)
+              if not PED.IS_PED_SITTING_IN_VEHICLE(escort_2, escortCar) then
+                repeat
+                  dismissEscorts:sleep(500)
+                until
+                PED.IS_PED_SITTING_IN_VEHICLE(escort_2, escortCar) == true
+              end
             end
             TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 25, 2883621)
             dismissEscorts:sleep(10000)
@@ -773,7 +852,7 @@ billionaire_services:add_imgui(function()
         end
       end
       ImGui.Text("Start Doing a Burnout.")
-      if ImGui.Button("Do Burnout") then
+      if ImGui.Button("Do a Burnout") then
         doingBurnout    = true
         driveStarted    = false
         driveToWp       = false
@@ -970,6 +1049,18 @@ billionaire_services:add_imgui(function()
     if ImGui.Button("   Dismiss   ") then
       if spawned_limo[1] ~= nil then
         script.run_in_fiber(function(dismissLimo)
+          if limoStarted then
+            TASK.CLEAR_PED_TASKS(limoDriver)
+            TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
+            TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
+            TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
+            limoStarted = false
+            dismissLimo:slep(2000)
+          end
+          if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), limo) then
+            TASK.TASK_LEAVE_VEHICLE(self.get_ped(), limo, 1)
+            dismissLimo:sleep(2000)
+          end
           TASK.TASK_VEHICLE_DRIVE_WANDER(limoDriver, limo, 25, 2883621)
           dismissLimo:sleep(10000)
           TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
@@ -996,7 +1087,7 @@ billionaire_services:add_imgui(function()
             gui.show_error("Private Limo", "Please set a waypoint on the map first!")
             return
           end
-            TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(limoDriver, limo, destination.x, destination.y, destination.z, 25, 786603, 1.0)
+            TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(limoDriver, limo, destination.x, destination.y, destination.z, 25, 786603, 20.0)
             limoService:sleep(500)
             limoStarted = true
             gui.show_message("Private Limo", "Driving to waypoint...")
@@ -1038,30 +1129,15 @@ billionaire_services:add_imgui(function()
     if ImGui.Button("Debug Stuff") then
       script.run_in_fiber(function()
         local myPos = ENTITY.GET_ENTITY_COORDS(self.get_ped())
-        retVal = PED.IS_ANY_PED_SHOOTING_IN_AREA(myPos.x - 10, myPos.y - 10, myPos.z - 10, myPos.x + 10, myPos.y + 10, myPos.z + 10, false, false)
-        -- local myPos = ENTITY.GET_ENTITY_COORDS(self.get_ped(), false)
-        -- local jetSpeed = (ENTITY.GET_ENTITY_SPEED(pJet) * 3.6)
-        -- local debugJetHeading = ENTITY.GET_ENTITY_HEADING(pJet)
-        -- local jetPos = ENTITY.GET_ENTITY_COORDS(pJet, false)
-        -- local JetAltitude = jetPos.z
-        -- local vDist = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, -1643.2, -2773.15, 13.9447)
-        -- local shooterPos = ENTITY.GET_ENTITY_COORDS(escort_1, false)
-        -- -- local randomPed = PED.GET_CLOSEST_PED(shooterPos.x, shooterPos.y, shooterPos.z, 400, 1, 0, 0, 0, 0, 0)
-        -- local randomVeh = VEHICLE.GET_CLOSEST_VEHICLE(shooterPos.x, shooterPos.y, shooterPos.z, 400, 0, 70)
-        -- local randomPed = nearestPed(self.get_ped())
-        -- local pedCoords = ENTITY.GET_ENTITY_COORDS(randomPed, false)
-        -- log.debug("My Position: "..tostring(myPos))
-        -- log.debug("Distance: "..tostring(vDist))
-        -- log.debug("Jet Speed: "..tostring(jetSpeed))
-        -- log.debug("in_car: "..tostring(sittingInEscortCar))
-        -- log.debug("jet alt: "..tostring(JetAltitude))
-        -- log.debug("bool check: "..tostring(dismissed))
-        -- log.debug("car blip: "..tostring(carBlip))
-        -- log.debug("shooter pos: "..tostring(shooterPos))
-        -- log.debug("randomPedCoords: "..tostring(pedCoords))
-        -- log.debug("randomVeh: "..tostring(randomVeh))
-        -- log.debug("randomPed: "..tostring(randomPed))
-        log.debug("randomPed: "..tostring(retVal))
+        local streetHash  = PATHFIND.GET_STREET_NAME_AT_COORD(myPos.x, myPos.y, myPos.z)
+        local streetName  = HUD.GET_STREET_NAME_FROM_HASH_KEY(streetHash)
+        local myHeading = ENTITY.GET_ENTITY_HEADING(self.get_ped())
+        if string.find(streetName, "Panorama") then retVal = true end
+        log.debug("Player Position: "..tostring(myPos))
+        log.debug("Online: "..tostring(retVal))
+        log.debug("Street Name: "..streetName)
+        log.debug("Index: "..tostring(airport_index))
+        log.debug("Heading: "..tostring(myHeading))
       end)
     end
   end
@@ -1227,58 +1303,137 @@ script.register_looped("services", function(services)
       sittingInLimo = false
     end
     if limoStarted then
-      if not sittingInLimo then
-        TASK.CLEAR_PED_TASKS(limoDriver)
-        TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
-        TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
-        TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
+      if ENTITY.DOES_ENTITY_EXIST(limo) then
+        if not sittingInLimo then
+          TASK.CLEAR_PED_TASKS(limoDriver)
+          TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
+          TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
+          TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
+          limoStarted = false
+        end
+        local wp = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
+        if HUD.DOES_BLIP_EXIST(wp) then
+          local limoCoods  = ENTITY.GET_ENTITY_COORDS(limo)
+          local wpCoords   = HUD.GET_BLIP_COORDS(wp)
+          local dist       = SYSTEM.VDIST(limoCoods.x, limoCoods.y, limoCoods.z, wpCoords.x, wpCoords.y, wpCoords.z)
+          if dist <= 50.0 then
+            limoStarted = false
+            services:sleep(1000)
+            gui.show_message("Private Limo", "You have reached your destination.")
+          end
+        else
+          TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
+          limoStarted = false
+        end
+      else
         limoStarted = false
       end
     end
   end
 end)
-script.register_looped("jet manager", function(jetMgr)
-  local jetPos = ENTITY.GET_ENTITY_COORDS(pJet, false)
-  local jetAltitude = jetPos.z
+script.register_looped("Plane Landing", function(planeland)
+  if startLandingProcess then
+    local airportData = filteredAirports[airport_index + 1]
+    local jetPos      = ENTITY.GET_ENTITY_COORDS(pJet, false)
+    local airportDist = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, airportData.checkPos.x, airportData.checkPos.y, airportData.checkPos.z)
+    if airportDist > 200 and airportDist <= 1000 then
+      TASK.TASK_PLANE_LAND(pilot, pJet, airportData.runwayStart.x, airportData.runwayStart.y, airportData.runwayStart.z, airportData.runwayEnd.x, airportData.runwayEnd.y, airportData.runwayEnd.z)
+      planeland:sleep(1000)
+      startLandingProcess = false
+      started_landing     = true
+      setHeading          = airportData.heading
+      hangarPos           = airportData.hangar
+      planeland:sleep(10000) -- sleep for 10 seconds then show an optional skip button in case the pilot was struggling to land.
+      showLandingSkip = true
+    elseif airportDist > 1000 then
+      TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, airportData.checkPos.x, airportData.checkPos.y, airportData.checkPos.z, 4, 100.0, 0, airportData.checkPosHdng, 0, 0, 200)
+    end
+  end
+end)
+script.register_looped("Jet Manager", function(jetMgr)
   if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
+    local jetPos = ENTITY.GET_ENTITY_COORDS(pJet, false)
+    local jetAltitude = jetPos.z
+    local airportData = filteredAirports[airport_index + 1]
+    local runwayEndDist = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, airportData.runwayEnd.x, airportData.runwayEnd.y, airportData.runwayEnd.z)
     if jetAltitude >= 150 then
       can_land = true
     else
       can_land = false
     end
+    if started_landing and not skippedLandingProcess then
+      if runwayEndDist <= 200 then
+        TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(pilot, pJet, airportData.runwayEnd.x, airportData.runwayEnd.y, airportData.runwayEnd.z, 5.0, 786603, 80.0)
+        if (ENTITY.GET_ENTITY_SPEED(pJet) * 3.6) <= 10.0 then
+          jetMgr:sleep(1500)
+          TASK.CLEAR_PED_TASKS(pilot)
+          TASK.CLEAR_PED_SECONDARY_TASK(pilot)
+          TASK.CLEAR_PRIMARY_VEHICLE_TASK(pJet)
+          VEHICLE.BRING_VEHICLE_TO_HALT(pJet, 5.0, 2000, true)
+          showLandingSkip = false
+          CAM.DO_SCREEN_FADE_OUT(1000)
+          jetMgr:sleep(1000)
+          CAM.DO_SCREEN_FADE_IN(1000)
+          ENTITY.SET_ENTITY_COORDS(pJet, hangarPos.x, hangarPos.y, hangarPos.z, true, true, true, true)
+          ENTITY.SET_ENTITY_HEADING(pJet, setHeading)
+          VEHICLE.SET_VEHICLE_DOOR_OPEN(pJet, 0, false, false)
+          jetMgr:sleep(500)
+          started_landing = false
+          initialFlight   = true
+          newFlight       = false
+          flying          = false
+        end
+      end
+    end
   end
-  if started_landing then
-    if (ENTITY.GET_ENTITY_SPEED(pJet) * 3.6) <= 10.0 then
-      TASK.CLEAR_PED_TASKS(pilot)
-      TASK.CLEAR_PED_SECONDARY_TASK(pilot)
-      TASK.CLEAR_PRIMARY_VEHICLE_TASK(pJet)
-      VEHICLE.BRING_VEHICLE_TO_HALT(pJet, 5.0, 2000, true)
-      jetMgr:sleep(1500)
-      CAM.DO_SCREEN_FADE_OUT(1000)
-      jetMgr:sleep(1000)
-      CAM.DO_SCREEN_FADE_IN(1000)
-      ENTITY.SET_ENTITY_COORDS(pJet, hangarPos.x, hangarPos.y, hangarPos.z, true, true, true, true)
-      ENTITY.SET_ENTITY_HEADING(pJet, setHeading)
-      VEHICLE.SET_VEHICLE_DOOR_OPEN(pJet, 0, false, false)
-      jetMgr:sleep(500)
-      started_landing = false
+  if flying and not PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
+    showBailMsg = true
+    if ENTITY.DOES_ENTITY_EXIST(pilot) or ENTITY.DOES_ENTITY_EXIST(copilot) then
+      jetMgr:sleep(10000)
+      PED.DELETE_PED(pilot)
+      PED.DELETE_PED(copilot)
+      if ENTITY.DOES_ENTITY_EXIST(pJet) then
+        ENTITY.SET_ENTITY_AS_MISSION_ENTITY(pJet, true, true)
+        jetMgr:sleep(200)
+        VEHICLE.DELETE_VEHICLE(pJet)
+      end
+      startLandingProcess = false
+      started_landing     = false
+      showLandingSkip     = false
+      initialFlight       = true
+      jetDismissed        = true
+      newFlight           = false
+      can_land            = false
+      flying              = false
+      spawned_jet         = {}
+      spawned_pilot       = {}
+      if showBailMsg then
+        gui.show_message("Private Jet", "Since you've decided to go for a skydive, your jet has been dismissed.")
+        showBailMsg = false
+      end
     end
   end
 end)
+
 script.register_looped("Escort In/Out", function()
   if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) and not sittingInEscortCar then
     if PAD.IS_CONTROL_PRESSED(0, 23) and not dismissed then
+      startFollowTask = false
+      PED.SET_PED_CONFIG_FLAG(escort_1, 402, false)
       PED.SET_PED_CONFIG_FLAG(escort_2, 402, false)
       PED.SET_PED_CONFIG_FLAG(escort_3, 402, false)
+      TASK.TASK_LEAVE_VEHICLE(escort_1, escortCar, 1)
       TASK.TASK_LEAVE_VEHICLE(escort_2, escortCar, 1)
       TASK.TASK_LEAVE_VEHICLE(escort_3, escortCar, 1)
       escortLeftCar = true
     end
   end
 end)
+
 script.register_looped("misc", function(misc)
   misc:yield()
   if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) and not sittingInEscortCar then
+    startFollowTask = true
     local myVeh   = PED.GET_VEHICLE_PED_IS_USING(self.get_ped())
     local mySpeed = ENTITY.GET_ENTITY_SPEED(myVeh)
     if escortLeftCar then
@@ -1290,11 +1445,18 @@ script.register_looped("misc", function(misc)
       TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
       PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
       escortLeftCar = false
-      -- startFollowTask = true
     end
     misc:sleep(500)
     if not dismissed then
-      TASK.TASK_VEHICLE_ESCORT(escort_1, escortCar, myVeh, -1, mySpeed + 6.0, 1074528293, 3.0, 3.0, 3.0)
+      if startFollowTask then
+        if not PED.IS_PED_SITTING_IN_VEHICLE(escort_1, escortCar) then
+          TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+          misc:sleep(2000)
+          TASK.TASK_VEHICLE_ESCORT(escort_1, escortCar, myVeh, -1, mySpeed + 6.0, 24904187, 3.0, 3.0, 3.0) -- old=1074528293
+        else
+          TASK.TASK_VEHICLE_ESCORT(escort_1, escortCar, myVeh, -1, mySpeed + 6.0, 24904187, 3.0, 3.0, 3.0) -- old=1074528293
+        end
+      end
     end
   end
   if doDonuts then
@@ -1319,7 +1481,8 @@ script.register_looped("misc", function(misc)
   end
   if not dismissed then
     local myPos = ENTITY.GET_ENTITY_COORDS(self.get_ped())
-    if PED.IS_PED_SHOOTING_IN_AREA(self.get_ped(), myPos.x - 20, myPos.y - 20, myPos.z -10, myPos.x + 20, myPos.y + 20, myPos.z + 20, false, true) then
+    if PED.IS_PED_SHOOTING_IN_AREA(self.get_ped(), myPos.x - 100, myPos.y - 100, myPos.z -100, myPos.x + 100, myPos.y + 100, myPos.z + 100, false, true) and not escortLeftCar then
+      startFollowTask = false
       PED.SET_PED_CONFIG_FLAG(escort_1, 402, false)
       PED.SET_PED_CONFIG_FLAG(escort_2, 402, false)
       PED.SET_PED_CONFIG_FLAG(escort_3, 402, false)
@@ -1344,6 +1507,7 @@ script.register_looped("misc", function(misc)
     end
   end
 end)
+
 event.register_handler(menu_event.ScriptsReloaded, function()
     if spawned_jet[1] ~= nil then
       for _, v in ipairs(spawned_jet) do
