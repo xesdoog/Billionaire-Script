@@ -1451,6 +1451,7 @@ script.register_looped("services", function(services)
           gui.show_message("Private Limo", "Your private limo has been dismissed. Have a nice flight!")
           showLimoMsg = false
         end
+        spawned_limo = {}
         limoDismissed = true
       end
     end
