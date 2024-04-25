@@ -1,13 +1,10 @@
-# Billionaire Services [WIP]
+# Billionaire Services
 Lua script for YimMenu that provides billionaire services for GTA V players.
-
-> [!WARNING]
-> Work in progress.
 
 ## Features:
 ### Private Jet Service:
 
-![billionaire_services](https://github.com/xesdoog/Billionaire-Script/assets/66764345/93dfa7b2-c52c-4130-9f71-7a57a40b7f95)
+![billionaire_services](https://github.com/xesdoog/Billionaire-Script/assets/66764345/d705d7cd-050d-4d20-bf35-0e304f22cec6)
 
 ### Usage:
 1. Choose an airport from the dropdown list. A [Luxor Deluxe](https://static.wikia.nocookie.net/gtawiki/images/1/1f/LuxorDeluxe-GTAV-front.png/revision/latest/scale-to-width-down/1000?cb=20150614102306) will spawn there.
@@ -31,7 +28,7 @@ Lua script for YimMenu that provides billionaire services for GTA V players.
 
 ### Private Security Service:
 
-![billionaire_services(1)](https://github.com/xesdoog/Billionaire-Script/assets/66764345/cbb7b98d-1e73-454c-946f-453950664407)
+![billionaire_services(escort)](https://github.com/xesdoog/Billionaire-Script/assets/66764345/a885f376-7fba-4322-a2a7-58c69a66d84f)
 
 ### Usage:
 This feature has two main options:
@@ -62,13 +59,13 @@ This feature has two main options:
    - *more options will probably be added later (call some bitches? idk)*
 
 ## Known Issues:
-- It's probably too early for listing issues at the moment.
+- The jet landing process is a bit random. Sometimes the pilot will land without any issues, sometimes he will take forever and in some other occasions, he will crash the jet. This is not a *"literally unlpalayable"* type of issue since players have the option to skip the landing part.
 
 ## TO DO:
 - [x] ~Improve the flight system~. ✅**Done.**
 - [x] ~Fix the donuts option for the Personal Escort.~ ✅**Done.**
-- [ ] Improve the general experience. *(in-progress)*
-- [ ] Automatically teleport bodyguards and escorts to your location in case you get separated. *(needs some thought to not mistakenly break anything. Mainly a check for interiors but other stuff too.)*
+- [x] ~Automatically teleport bodyguards and escorts to your location in case you get separated. *(needs some thought to not mistakenly break anything. Mainly a check for interiors but other stuff too.)*~ ✅**Done.**
+- [ ] Improve the general experience. *(there's always room for improvement)*
 
 ## Credits:
 [YimMenu](https://github.com/YimMenu/YimMenu) for being an awesome project.
