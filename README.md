@@ -16,7 +16,7 @@ Lua script for YimMenu that provides billionaire services for GTA V players.
   - **Fly Around Waypoint**:
     - Place a waypoint on the map then press this button. Your pilot will take off and fly towards the waypoint. Unfortunately, you can't land a private jet wherever you want so when you get to your destination, the pilot will keep circling around the area.
   - **Fly To New Waypoint**:
-    - Place a **different** waypoint on the map then press this button. Your pilot will do the same thing above without the take-off part. You can use this button as much as you want to continuously fly wherever you want.
+    - While flying in your jet, open the map and place a **new** waypoint then press this button. Your pilot will do the same thing as the previous option but without the take-off part. You can use this button as much as you want to continuously fly wherever you want.
   - **Land at one of the three airports available**:
     - Decide where you want to land your jet by selecting an airport from the dropdown list at the top then press the landing button. Your pilot will then fly towards the airport and once he gets close, he will start landing the jet. At this phase, you can either wait for him to try and land it *(the success rate is much higher than it was before)* or check the script UI for a button that will appear after a few seconds and press it to skip the landing process.
 
