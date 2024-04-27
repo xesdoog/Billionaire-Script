@@ -59,7 +59,7 @@ This feature has two main options:
    - *more options will probably be added later (call some bitches? idk)*
 
 ## Known Issues:
-- The jet landing process is a bit random. Sometimes the pilot will land without any issues, sometimes he will take forever and in some other occasions, he will crash the jet. This is not a *"literally unlpalayable"* type of issue since players have the option to skip the landing part.
+- The jet landing process is a bit random. Sometimes the pilot will land without any issues, sometimes he will take forever and in some other occasions, he will crash the jet. This is not a *"literally unplayable"* type of issue since players have the option to skip the landing part.
 
 ## TO DO:
 - [x] ~Improve the flight system~. ✅**Done.**
