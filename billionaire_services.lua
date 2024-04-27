@@ -4,7 +4,7 @@ local airport_index             = 0
 local pJet                      = 0
 local pilot                     = 0
 local copilot                   = 0
-local jetSeat                   = 1
+local jetSeat                   = 2
 local setHeading                = 0
 local bodyguard_index           = 0
 local guard_1                   = 0
@@ -17,7 +17,7 @@ local escortCar                 = 0
 local carBlip                   = 0
 local limo                      = 0
 local limoDriver                = 0
-local limoSeat                  = 1
+local limoSeat                  = 2
 local donutDirection            = 7
 local dbgclc                    = 0
 local jetTpBtn                  = false
@@ -424,6 +424,7 @@ billionaire_services:add_imgui(function()
             if VEHICLE.IS_VEHICLE_SEAT_FREE(pJet, jetSeat, true) then
               PED.SET_PED_INTO_VEHICLE(self.get_ped(), pJet, jetSeat)
             else
+              gui.show_message("Private Jet", "Seat currently occupied.")
               jetSeat = jetSeat + 1
               return
             end
@@ -1402,6 +1403,7 @@ billionaire_services:add_imgui(function()
           if VEHICLE.IS_VEHICLE_SEAT_FREE(limo, limoSeat, true) then
             PED.SET_PED_INTO_VEHICLE(self.get_ped(), limo, limoSeat)
           else
+            gui.show_message("Private Limo", "Seat currently occupied.")
             limoSeat = limoSeat + 1
             return
           end
