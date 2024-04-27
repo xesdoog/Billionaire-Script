@@ -4,6 +4,7 @@ local airport_index             = 0
 local pJet                      = 0
 local pilot                     = 0
 local copilot                   = 0
+local jetSeat                   = 1
 local setHeading                = 0
 local bodyguard_index           = 0
 local guard_1                   = 0
@@ -16,8 +17,10 @@ local escortCar                 = 0
 local carBlip                   = 0
 local limo                      = 0
 local limoDriver                = 0
+local limoSeat                  = 1
 local donutDirection            = 7
 local dbgclc                    = 0
+local jetTpBtn                  = false
 local initialFlight             = false
 local newFlight                 = false
 local flying                    = false
@@ -39,10 +42,12 @@ local doingBurnout              = false
 local doingDriveBy              = false
 local doDonuts                  = false
 local escortLeftCar             = false
+local askedToLeave              = false
 local sittingInLimo             = false
-local limoStarted               = false
+local limoWp                    = false
+local limoCr                    = false
 local limoDismissed             = false
-local showLimoMsg               = true
+local showLimoMsg               = false
 local bsDebug                   = false
 local taskInProgress            = false
 local startFollowTask           = false
@@ -200,8 +205,6 @@ billionaire_services:add_imgui(function()
           ENTITY.SET_ENTITY_INVINCIBLE(pilot, true)
           table.insert(spawned_pilot, pilot)
           local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
-          PED.SET_GROUP_SEPARATION_RANGE(myGroup, 16960)
-          PED.SET_PED_AS_GROUP_MEMBER(pilot, myGroup)
           PED.SET_PED_CONFIG_FLAG(pilot, 251, true)
           PED.SET_PED_CONFIG_FLAG(pilot, 255, true)
           PED.SET_PED_CONFIG_FLAG(pilot, 398, true)
@@ -216,7 +219,6 @@ billionaire_services:add_imgui(function()
           copilot = PED.CREATE_PED_INSIDE_VEHICLE(pJet, "PED_TYPE_CIVMALE", copilotModel, 0, true, false)
           ENTITY.SET_ENTITY_INVINCIBLE(copilot, true)
           table.insert(spawned_pilot, copilot)
-          PED.SET_PED_AS_GROUP_MEMBER(copilot, myGroup)
           PED.SET_PED_CONFIG_FLAG(copilot, 251, true)
           PED.SET_PED_CONFIG_FLAG(copilot, 255, true)
           PED.SET_PED_CONFIG_FLAG(copilot, 398, true)
@@ -230,11 +232,11 @@ billionaire_services:add_imgui(function()
             AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_22_DLC_BATTLE_MIX1_RADIO")
           end
         end)
+        gui.show_message("Private Jet", "Your private jet is waiting for you at "..airportData.name..".")
       end
     else
-      ImGui.Spacing();ImGui.Text("Jet Options:");ImGui.Separator()
       if not jetDismissed then
-        if ImGui.Button("Dismiss Jet") then
+        if ImGui.Button(" Dismiss ") then
           if not flying then
             showPilotLeavingMsg = true
             jetDismissed        = true
@@ -273,41 +275,59 @@ billionaire_services:add_imgui(function()
             return
           end
         end
-        ImGui.SameLine();ImGui.Dummy(40, 1);ImGui.SameLine()
-        if not flying and not newFlight then
-          if ImGui.Button("Fly Around Waypoint") then
-            script.run_in_fiber(function(flyTo)
-              local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
-              if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
-                if HUD.DOES_BLIP_EXIST(waypoint) then
-                  destination = HUD.GET_BLIP_COORDS(waypoint)
-                else
-                  gui.show_error("Private Jet", "Please set a waypoint on the map first!")
-                  return
-                end
-                if NETWORK.NETWORK_IS_SESSION_STARTED() then
-                  AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_35_DLC_HEI4_MLR") -- music locker for online
-                else
-                  AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_22_DLC_BATTLE_MIX1_RADIO") -- LSUR for SP
-                end
-                flying        = true
-                initialFlight = true
-                VEHICLE.SET_VEHICLE_DOORS_SHUT(pJet, false)
-                TASK.TASK_VEHICLE_DRIVE_TO_COORD(pilot, pJet, airportData.taxiPos.x, airportData.taxiPos.y, airportData.taxiPos.z, 5.0, 0, 0xB79F589E, 8388614, 10.0, 10.0)
-                flyTo:sleep(6000)
-                CAM.DO_SCREEN_FADE_OUT(1000)
-                flyTo:sleep(1000)
-                CAM.DO_SCREEN_FADE_IN(1000)
-                ENTITY.SET_ENTITY_COORDS(pJet, airportData.cutPos.x, airportData.cutPos.y, airportData.cutPos.z, true, true, true, true)
-                VEHICLE.SET_VEHICLE_FORWARD_SPEED(pJet, 100.0) --360km/h
-                VEHICLE.CONTROL_LANDING_GEAR(pJet, 1)
-                TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, destination.x, destination.y, destination.z + 600, 4, 100.0, 0, 90, 0, 0, 200)
-                flyTo:sleep(500)
-                initialFlight = false
-              else
-                gui.show_message("Private Jet", "Get in your private jet to be able to fly around.")
-              end
+        if jetTpBtn then
+          ImGui.SameLine();ImGui.Dummy(60, 1);ImGui.SameLine()
+          if ImGui.Button("Teleport To Jet") then
+            script.run_in_fiber(function(jettp)
+              CAM.DO_SCREEN_FADE_OUT(500)
+              jettp:sleep(1000)
+              TASK.CLEAR_PED_TASKS_IMMEDIATELY(self.get_ped())
+              PED.SET_PED_INTO_VEHICLE(self.get_ped(), pJet, 1)
+              jettp:sleep(1000)
+              CAM.DO_SCREEN_FADE_IN(500)
             end)
+          end
+        end
+        ImGui.Spacing();ImGui.Text("Jet Options:");ImGui.Separator()
+        if not flying and not newFlight then
+          if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
+            ImGui.Dummy(80, 1);ImGui.SameLine()
+            if ImGui.Button("Fly Around Waypoint") then
+              script.run_in_fiber(function(flyTo)
+                local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
+                if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
+                  if HUD.DOES_BLIP_EXIST(waypoint) then
+                    destination = HUD.GET_BLIP_COORDS(waypoint)
+                  else
+                    gui.show_error("Private Jet", "Please set a waypoint on the map first!")
+                    return
+                  end
+                  if NETWORK.NETWORK_IS_SESSION_STARTED() then
+                    AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_35_DLC_HEI4_MLR") -- music locker for online
+                  else
+                    AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_22_DLC_BATTLE_MIX1_RADIO") -- LSUR for SP
+                  end
+                  flying        = true
+                  initialFlight = true
+                  VEHICLE.SET_VEHICLE_DOORS_SHUT(pJet, false)
+                  TASK.TASK_VEHICLE_DRIVE_TO_COORD(pilot, pJet, airportData.taxiPos.x, airportData.taxiPos.y, airportData.taxiPos.z, 5.0, 0, 0xB79F589E, 8388614, 10.0, 10.0)
+                  flyTo:sleep(6000)
+                  CAM.DO_SCREEN_FADE_OUT(1000)
+                  flyTo:sleep(1000)
+                  CAM.DO_SCREEN_FADE_IN(1000)
+                  ENTITY.SET_ENTITY_COORDS(pJet, airportData.cutPos.x, airportData.cutPos.y, airportData.cutPos.z, true, true, true, true)
+                  VEHICLE.SET_VEHICLE_FORWARD_SPEED(pJet, 100.0) --360km/h
+                  VEHICLE.CONTROL_LANDING_GEAR(pJet, 1)
+                  TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, destination.x, destination.y, destination.z + 600, 4, 100.0, 0, 90, 0, 0, 200)
+                  flyTo:sleep(500)
+                  initialFlight = false
+                else
+                  gui.show_message("Private Jet", "Get in your private jet to be able to fly around.")
+                end
+              end)
+            end
+          else
+            ImGui.TextWrapped("Board your private jet to see more options.")
           end
         end
       else
@@ -323,79 +343,143 @@ billionaire_services:add_imgui(function()
         end
       end
       if flying and not initialFlight then
-        if not started_landing and not startLandingProcess then
-          if ImGui.Button("Fly To New Waypoint") then
-            script.run_in_fiber(function(newWp)
-              local newWaypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
-              if HUD.DOES_BLIP_EXIST(newWaypoint) then
-                newDestination = HUD.GET_BLIP_COORDS(newWaypoint)
-                if newDestination ~= destination then
-                  TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, newDestination.x, newDestination.y, newDestination.z + 600, 4, 100.0, 0, 90, 0, 0, 200)
-                  newWp:sleep(500)
-                  newFlight = true
-                  flying    = true
-                else
-                  gui.show_error("Private Jet", "Please set a different waypoint on the map first!")
-                  return
-                end
-              else
-                gui.show_error("Private Jet", "Please set a waypoint on the map first!")
-                return
-              end
-            end)
-          end
-        end
-      end
-      ImGui.Spacing()
-      ImGui.Spacing()
-      ImGui.Text("Landing Options:")
-      ImGui.Separator()
-      if can_land then
-        if not startLandingProcess and not started_landing then
-          if ImGui.Button("Land At "..airportData.name) then
-            local jetPos      = ENTITY.GET_ENTITY_COORDS(pJet, false)
-            local hangarDist  = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, airportData.hangar.x, airportData.hangar.y, airportData.hangar.z)
-            if hangarDist <= 200 then
-              gui.show_message("Private Jet", "Your private jet is already at "..airportData.name)
-              return
-            else
-              skippedLandingProcess = false
-              startLandingProcess   = true
-              script.run_in_fiber(function(script)
-                if spawned_escorts[1] ~= nil then
-                  if ENTITY.DOES_ENTITY_EXIST(escortCar) then
-                    if escortLeftCar then
-                      TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-                      TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-                      TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-                      PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-                      PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-                      PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-                      TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-                      TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-                      PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-                      escortLeftCar = false
-                    end
-                    gui.show_message("Private Jet", "Flying towards "..airportData.name..". Your private escort will meet you there.")
-                    STREAMING.REQUEST_COLLISION_AT_COORD(airportData.escrtPos.x, airportData.escrtPos.y, airportData.escrtPos.z)
-                    script:sleep(5000)
-                    ENTITY.SET_ENTITY_COORDS(escortCar, airportData.escrtPos.x, airportData.escrtPos.y, airportData.escrtPos.z, true, false, false, true)
-                    ENTITY.SET_ENTITY_HEADING(escortCar, airportData.escrtHdng)
+        if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
+          if not started_landing and not startLandingProcess then
+            if ImGui.Button("Fly To New Waypoint") then
+              script.run_in_fiber(function(newWp)
+                local newWaypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
+                if HUD.DOES_BLIP_EXIST(newWaypoint) then
+                  newDestination = HUD.GET_BLIP_COORDS(newWaypoint)
+                  if newDestination ~= destination then
+                    TASK.TASK_PLANE_MISSION(pilot, pJet, 0, 0, newDestination.x, newDestination.y, newDestination.z + 600, 4, 100.0, 0, 90, 0, 0, 200)
+                    newWp:sleep(500)
+                    newFlight = true
+                    flying    = true
+                  else
+                    gui.show_error("Private Jet", "Please set a different waypoint on the map first!")
+                    return
                   end
                 else
-                  gui.show_message("Private Jet", "Flying towards "..airportData.name.."...")
+                  gui.show_error("Private Jet", "Please set a waypoint on the map first!")
+                  return
                 end
               end)
             end
           end
         else
-          if not showLandingSkip then
-            ImGui.TextWrapped("Your pilot is now heading towards the airport. You can either wait for him to land your private jet or when you get closer to the runway, a skip button will appear which you can use to skip the landing process.")
+          ImGui.TextWrapped("Board your private jet to see more options.")
+        end
+      end
+      if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
+        ImGui.Spacing()
+        ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Radio")
+        if AUDIO.IS_VEHICLE_RADIO_ON(pJet) then
+          ImGui.Dummy(125, 1);ImGui.SameLine()
+          if ImGui.Button("Turn Off") then
+            AUDIO.SET_VEH_RADIO_STATION(pJet, "OFF")
+          end
+          ImGui.Dummy(5, 1);ImGui.SameLine()
+          if ImGui.Button("< Previous Station") then
+            AUDIO.SET_RADIO_RETUNE_DOWN()
+          end
+          ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+          if ImGui.Button("Next Station >") then
+            AUDIO.SET_RADIO_RETUNE_UP()
+          end
+          local stationName = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
+          local displayName = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(stationName)
+          ImGui.Text("Now Playing: "..displayName)
+        else
+          ImGui.Dummy(125, 1);ImGui.SameLine()
+          if ImGui.Button("Turn On") then
+            AUDIO.SET_VEH_RADIO_STATION(pJet, "RADIO_22_DLC_BATTLE_MIX1_RADIO")
           end
         end
-      else
-        if not showLandingSkip then
-          ImGui.Text("Gain some altitude to be able to see landing\noptions.")
+        ImGui.Spacing();ImGui.Separator()
+        ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Seats")
+        ImGui.Dummy(5, 1);ImGui.SameLine()
+        if ImGui.Button(" < Previous Seat  ") then
+          script.run_in_fiber(function()
+            local numSeats = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(pJet)
+            if jetSeat <= 1 then
+              jetSeat = numSeats
+            end
+            jetSeat = jetSeat - 1
+            if VEHICLE.IS_VEHICLE_SEAT_FREE(pJet, jetSeat, true) then
+              PED.SET_PED_INTO_VEHICLE(self.get_ped(), pJet, jetSeat)
+            else
+              jetSeat = jetSeat - 1
+              return
+            end
+          end)
+        end
+        ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+        if ImGui.Button("  Next Seat  >") then
+          script.run_in_fiber(function()
+            local numSeats = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(pJet)
+            if jetSeat >= (numSeats - 1) then
+              jetSeat = 0
+            end
+            jetSeat = jetSeat + 1
+            if VEHICLE.IS_VEHICLE_SEAT_FREE(pJet, jetSeat, true) then
+              PED.SET_PED_INTO_VEHICLE(self.get_ped(), pJet, jetSeat)
+            else
+              jetSeat = jetSeat + 1
+              return
+            end
+          end)
+        end
+        ImGui.Spacing()
+        ImGui.Spacing()
+        ImGui.Text("Landing Options:")
+        ImGui.Separator()
+        if can_land then
+          if not startLandingProcess and not started_landing then
+            if ImGui.Button("Land At "..airportData.name) then
+              local jetPos      = ENTITY.GET_ENTITY_COORDS(pJet, false)
+              local hangarDist  = SYSTEM.VDIST(jetPos.x, jetPos.y, jetPos.z, airportData.hangar.x, airportData.hangar.y, airportData.hangar.z)
+              if hangarDist <= 200 then
+                gui.show_message("Private Jet", "Your private jet is already at "..airportData.name)
+                return
+              else
+                skippedLandingProcess = false
+                startLandingProcess   = true
+                script.run_in_fiber(function(script)
+                  if spawned_escorts[1] ~= nil then
+                    if ENTITY.DOES_ENTITY_EXIST(escortCar) then
+                      if escortLeftCar then
+                        TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                        TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                        TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                        PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                        PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                        PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                        TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                        TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                        PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                        escortLeftCar = false
+                      end
+                      gui.show_message("Private Jet", "Flying towards "..airportData.name..". Your private escort will meet you there.")
+                      STREAMING.REQUEST_COLLISION_AT_COORD(airportData.escrtPos.x, airportData.escrtPos.y, airportData.escrtPos.z)
+                      script:sleep(5000)
+                      ENTITY.SET_ENTITY_COORDS(escortCar, airportData.escrtPos.x, airportData.escrtPos.y, airportData.escrtPos.z, true, false, false, true)
+                      ENTITY.SET_ENTITY_HEADING(escortCar, airportData.escrtHdng)
+                    end
+                  else
+                    gui.show_message("Private Jet", "Flying towards "..airportData.name.."...")
+                  end
+                end)
+              end
+            end
+          else
+            if not showLandingSkip then
+              ImGui.TextWrapped("Your pilot is now heading towards the airport. You can either wait for him to land your private jet or when you get closer to the runway, a skip button will appear which you can use to skip the landing process.")
+            end
+          end
+        else
+          if not showLandingSkip then
+            ImGui.Text("Gain some altitude to be able to see landing\noptions.")
+          end
         end
       end
       if showLandingSkip then
@@ -716,24 +800,26 @@ billionaire_services:add_imgui(function()
     else
       if ImGui.Button("  Dismiss Escorts  ") then
         if dismissed then
-          gui.show_error("Private Security", "Your private escort has already been dismissed!")
+          gui.show_error("Private Security", "Your private escort has already been dismissed. Please wait for everyone to leave!")
           return
         end
         dismissed = true
         script.run_in_fiber(function(dismissEscorts)
           if ENTITY.DOES_ENTITY_EXIST(escortCar) then
-            if taskInProgress then
-              TASK.CLEAR_PED_TASKS(escort_1)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-              TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
-              TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
-              taskInProgress  = false
-              startFollowTask = false
-              doingDriveBy    = false
-              doDonuts        = false
-              doingBurnout    = false
-              driveStarted    = false
-              driveToWp       = false
+            if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+              if taskInProgress then
+                TASK.CLEAR_PED_TASKS(escort_1)
+                TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+                TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
+                taskInProgress  = false
+                startFollowTask = false
+                doingDriveBy    = false
+                doDonuts        = false
+                doingBurnout    = false
+                driveStarted    = false
+                driveToWp       = false
+              end
             end
             if sittingInEscortCar then
               if not VEHICLE.IS_VEHICLE_STOPPED(escortCar) then
@@ -746,26 +832,34 @@ billionaire_services:add_imgui(function()
               dismissEscorts:sleep(2000) -- the exit animation takes approximately 2s so this wait time prevents escorts from driving off while you're still in the process of exiting the vehicle.
             end
             if escortLeftCar then
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-              PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-              TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-              TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-              PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-              escortLeftCar = false
-              if not PED.IS_PED_SITTING_IN_VEHICLE(escort_2, escortCar) then
-                repeat
-                  dismissEscorts:sleep(500)
-                until
-                PED.IS_PED_SITTING_IN_VEHICLE(escort_2, escortCar) == true
+              if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+                TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                if ENTITY.DOES_ENTITY_EXIST(escort_3) and not ENTITY.IS_ENTITY_DEAD(escort_3) then
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                end
+                if ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.IS_ENTITY_DEAD(escort_2) then
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                  if not PED.IS_PED_SITTING_IN_VEHICLE(escort_2, escortCar) then
+                    repeat
+                      dismissEscorts:sleep(500)
+                    until
+                    PED.IS_PED_SITTING_IN_VEHICLE(escort_2, escortCar) == true
+                  end
+                end
+                escortLeftCar = false
               end
             end
-            TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 25, 2883621)
-            dismissEscorts:sleep(10000)
-            TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+            if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+              TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 25, 2883621)
+              dismissEscorts:sleep(10000)
+              TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+            end
             PED.REMOVE_PED_FROM_GROUP(escort_1)
             PED.REMOVE_PED_FROM_GROUP(escort_2)
             PED.REMOVE_PED_FROM_GROUP(escort_3)
@@ -789,7 +883,9 @@ billionaire_services:add_imgui(function()
             PED.DELETE_PED(escort_2)
             PED.DELETE_PED(escort_3)
             spawned_escorts = {}
-            dismissed = false
+            dismissed       = false
+            escortLeftCar   = false
+            askedToLeave    = false
           end
         end)
         gui.show_message("Private Security", "Security escort service has been dismissed. Please wait for your escorts to leave.")
@@ -799,286 +895,321 @@ billionaire_services:add_imgui(function()
     if ImGui.IsItemHovered() then
       ImGui.BeginTooltip()
       ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
-      ImGui.TextWrapped("If you travel too far from your bodyguards or escorts, they will automatically teleport to your location but only if you are outside. This option allows them to teleport inside too.\nTeleporting inside is disabled by default as it could cause issues or crashes in some missions or heists.\n\nUSE AT YOUR OWN RISK.")
+      ImGui.TextWrapped("If you travel too far from your bodyguards or escorts, they will automatically teleport to your location but only if you're outside. This option allows them to teleport inside too.\nTeleporting inside is disabled by default as it could cause issues or crashes in some missions or heists.\n\nUSE AT YOUR OWN RISK.")
       ImGui.PopTextWrapPos()
       ImGui.EndTooltip()
     end
     if spawned_escorts[1] ~= nil then
-      ImGui.Text("Private Escort Options:")
-      ImGui.Separator()
-      ImGui.Dummy(90, 1);ImGui.SameLine()
-      if not escortLeftCar then
-        if ImGui.Button("Ask To Leave Vehicle") then
-          if not taskInProgress then
-            script.run_in_fiber(function()
-              if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
-                PED.SET_PED_CONFIG_FLAG(escort_1, 402, false)
-                TASK.TASK_LEAVE_VEHICLE(escort_1, escortCar, 1)
+      if not dismissed then
+        ImGui.Text("Private Escort Options:")
+        ImGui.Separator()
+        if ENTITY.DOES_ENTITY_EXIST(escortCar) then
+          ImGui.Dummy(90, 1);ImGui.SameLine()
+          if not escortLeftCar then
+            if ImGui.Button("Ask To Leave Vehicle") then
+              if not taskInProgress then
+                script.run_in_fiber(function()
+                  if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+                    PED.SET_PED_CONFIG_FLAG(escort_1, 402, false)
+                    TASK.TASK_LEAVE_VEHICLE(escort_1, escortCar, 1)
+                  end
+                  if ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.IS_ENTITY_DEAD(escort_2) then
+                    PED.SET_PED_CONFIG_FLAG(escort_2, 402, false)
+                    TASK.TASK_LEAVE_VEHICLE(escort_2, escortCar, 1)
+                  end
+                  if ENTITY.DOES_ENTITY_EXIST(escort_3) and not ENTITY.IS_ENTITY_DEAD(escort_3) then
+                    PED.SET_PED_CONFIG_FLAG(escort_3, 402, false)
+                    TASK.TASK_LEAVE_VEHICLE(escort_3, escortCar, 1)
+                  end
+                  escortLeftCar = true
+                  askedToLeave  = true
+                end)
+              else
+                gui.show_message("Private Security", "Stop "..currentTask.." first.")
+                return
               end
-              if ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.IS_ENTITY_DEAD(escort_2) then
-                PED.SET_PED_CONFIG_FLAG(escort_2, 402, false)
-                TASK.TASK_LEAVE_VEHICLE(escort_2, escortCar, 1)
-              end
-              if ENTITY.DOES_ENTITY_EXIST(escort_3) and not ENTITY.IS_ENTITY_DEAD(escort_3) then
-                PED.SET_PED_CONFIG_FLAG(escort_3, 402, false)
-                TASK.TASK_LEAVE_VEHICLE(escort_3, escortCar, 1)
-              end
-              escortLeftCar = true
-            end)
-          else
-            gui.show_message("Private Security", "Stop "..currentTask.." first.")
-            return
+            end
           end
-        end
-      end
-      if escortLeftCar then
-        if ImGui.Button("Get Back In The Vehicle") then
-          script.run_in_fiber(function()
-            if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
-              PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-              TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-            end
-            if ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.IS_ENTITY_DEAD(escort_2) then
-              PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-              TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-            end
-            if ENTITY.DOES_ENTITY_EXIST(escort_3) and not ENTITY.IS_ENTITY_DEAD(escort_3) then
-              PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-              TASK.CLEAR_PED_TASKS_IMMEDIATELY(escort_3)
-              PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1) --would stop responding if tasked with entering the vehicle like the other two so I'm just teleporting them directly into the vehicle.
-            end
-            escortLeftCar = false
-          end)
-        end
-      end
-      ImGui.Dummy(120, 1);ImGui.SameLine()
-      if ImGui.Button("Repair Vehicle") then
-        script.run_in_fiber(function()
-        VEHICLE.SET_VEHICLE_FIXED(escortCar)
-        VEHICLE.SET_VEHICLE_DEFORMATION_FIXED(escortCar)
-        end)
-      end
-      ImGui.Text("More Options:")
-      ImGui.Separator()
-      ImGui.Spacing()
-      if sittingInEscortCar then
-        if ImGui.Button("Drive To Waypoint") then
-          script.run_in_fiber(function()
-            local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
-            if HUD.DOES_BLIP_EXIST(waypoint) then
-              destination = HUD.GET_BLIP_COORDS(waypoint)
-            else
-              gui.show_error("Private Security", "Please set a waypoint on the map first!")
-              return
-            end
-            if escortLeftCar then
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-              PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-              TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-              TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-              PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-              escortLeftCar = false
-              cruisin:sleep(5000)
-            end
-            TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(escort_1, escortCar, destination.x, destination.y, destination.z, 40, 1074528293, 20.0) --old=2883621
-            driveToWp       = true
-            driveStarted    = false
-            doingBurnout    = false
-            doingDriveBy    = false
-            doDonuts        = false
-            taskInProgress  = true
-            currentTask     = "driving to waypoint"
-          end)
-        end
-        ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
-        if ImGui.Button("Cruise Around") then
-          script.run_in_fiber(function(cruisin)
-            if escortLeftCar then
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-              PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-              TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-              TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-              PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-              escortLeftCar = false
-              cruisin:sleep(5000)
-            end
-            TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 25, 786603)
-            cruisin:sleep(500)
-            driveStarted    = true
-            driveToWp       = false
-            doingBurnout    = false
-            doingDriveBy    = false
-            doDonuts        = false
-            taskInProgress  = true
-            currentTask     = "cruising around"
-          end)
-        end
-        if driveStarted or driveToWp then
-          ImGui.SameLine()
-          if ImGui.Button(" Stop ") then
-            script.run_in_fiber(function()
-              TASK.CLEAR_PED_TASKS(escort_1)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-              TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
-              TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
-              driveStarted    = false
-              driveToWp       = false
-              wpReached       = false
-              taskInProgress  = false
-              currentTask     = "None."
-            end)
-          end
-        end
-        ImGui.Text("Start Doing a Burnout.")
-        if ImGui.Button("Do a Burnout") then
-          doingBurnout    = true
-          driveStarted    = false
-          driveToWp       = false
-          doingDriveBy    = false
-          doDonuts        = false
-          taskInProgress  = true
-          currentTask     = "doing a burnout"
-          script.run_in_fiber(function(burnout)
-            TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 30, 1000000)
-            if escortLeftCar then
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-              PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-              TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-              TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-              PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-              escortLeftCar = false
-              burnout:sleep(5000)
-            end
-          end)
-        end
-        if doingBurnout then
-          ImGui.SameLine()
-            if ImGui.Button("   Stop   ") then
+          if escortLeftCar then
+            if ImGui.Button("Get Back In The Vehicle") then
               script.run_in_fiber(function()
-                TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 1000)
-                doingBurnout    = false
-                taskInProgress  = false
-                currentTask     = "None."
+                if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+                  PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                  TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                end
+                if ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.IS_ENTITY_DEAD(escort_2) then
+                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                end
+                if ENTITY.DOES_ENTITY_EXIST(escort_3) and not ENTITY.IS_ENTITY_DEAD(escort_3) then
+                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                  TASK.CLEAR_PED_TASKS_IMMEDIATELY(escort_3)
+                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1) --would stop responding if tasked with entering the vehicle like the other two so I'm just teleporting them directly into the vehicle.
+                end
+                escortLeftCar = false
+                askedToLeave  = false
               end)
             end
-        end
-        ImGui.Text("Start Doing Donuts");ImGui.SameLine();ImGui.TextDisabled("(?)")
-        if ImGui.IsItemHovered() then
-          ImGui.BeginTooltip()
-          ImGui.Text("You can use the \"Change Direction\" button\nto turn donuts into mad drifts.")
-          ImGui.EndTooltip()
-        end
-        if ImGui.Button("Do Donuts") then
-          script.run_in_fiber(function(donuts)
-            if not VEHICLE.IS_VEHICLE_ON_ALL_WHEELS(escortCar) then
-              VEHICLE.SET_VEHICLE_ON_GROUND_PROPERLY(escortCar, 5.0)
+          end
+          ImGui.Dummy(120, 1);ImGui.SameLine()
+          if ImGui.Button("Repair Vehicle") then
+            script.run_in_fiber(function()
+            VEHICLE.SET_VEHICLE_FIXED(escortCar)
+            VEHICLE.SET_VEHICLE_DEFORMATION_FIXED(escortCar)
+            end)
+          end
+          ImGui.Text("More Options:")
+          ImGui.Separator()
+          ImGui.Spacing()
+          if sittingInEscortCar then
+            ImGui.Dummy(5, 1);ImGui.SameLine()
+            if ImGui.Button("Drive To Waypoint") then
+              script.run_in_fiber(function()
+                local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
+                if HUD.DOES_BLIP_EXIST(waypoint) then
+                  destination = HUD.GET_BLIP_COORDS(waypoint)
+                else
+                  gui.show_error("Private Security", "Please set a waypoint on the map first!")
+                  return
+                end
+                if escortLeftCar then
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                  PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                  TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                  escortLeftCar = false
+                  cruisin:sleep(5000)
+                end
+                TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(escort_1, escortCar, destination.x, destination.y, destination.z, 40, 1074528293, 20.0) --old=2883621
+                driveToWp       = true
+                driveStarted    = false
+                doingBurnout    = false
+                doingDriveBy    = false
+                doDonuts        = false
+                taskInProgress  = true
+                currentTask     = "driving to waypoint"
+              end)
             end
-            if escortLeftCar then
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-              PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-              TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-              TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-              PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-              escortLeftCar = false
-              donuts:sleep(5000)
+            ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+            if ImGui.Button("Cruise Around") then
+              script.run_in_fiber(function(cruisin)
+                if escortLeftCar then
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                  PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                  TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                  escortLeftCar = false
+                  cruisin:sleep(5000)
+                end
+                TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 25, 786603)
+                cruisin:sleep(500)
+                driveStarted    = true
+                driveToWp       = false
+                doingBurnout    = false
+                doingDriveBy    = false
+                doDonuts        = false
+                taskInProgress  = true
+                currentTask     = "cruising around"
+              end)
             end
-            doDonuts        = true
-            doingBurnout    = false
-            driveStarted    = false
-            driveToWp       = false
-            doingDriveBy    = false
-            taskInProgress  = true
-            currentTask     = "doing MAAAD donuts"
-          end)
-        end
-        if doDonuts then
-          ImGui.SameLine()
-          if ImGui.Button("Change Direction") then
-            if donutDirection == 7 then
-            donutDirection   = donutDirection + 1
+            if driveStarted or driveToWp then
+              ImGui.SameLine()
+              if ImGui.Button(" Stop ") then
+                script.run_in_fiber(function()
+                  TASK.CLEAR_PED_TASKS(escort_1)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                  TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+                  TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
+                  driveStarted    = false
+                  driveToWp       = false
+                  wpReached       = false
+                  taskInProgress  = false
+                  currentTask     = "None."
+                end)
+              end
+            end
+            ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Radio")
+            if AUDIO.IS_VEHICLE_RADIO_ON(escortCar) then
+              ImGui.Dummy(125, 1);ImGui.SameLine()
+              if ImGui.Button("Turn Off") then
+                AUDIO.SET_VEH_RADIO_STATION(escortCar, "OFF")
+              end
+              ImGui.Dummy(5, 1);ImGui.SameLine()
+              if ImGui.Button("< Previous Station") then
+                AUDIO.SET_RADIO_RETUNE_DOWN()
+              end
+              ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+              if ImGui.Button("Next Station >") then
+                AUDIO.SET_RADIO_RETUNE_UP()
+              end
+              local stationName = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
+              local displayName = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(stationName)
+              ImGui.Text("Now Playing: "..displayName)
+              ImGui.Separator()
             else
-              donutDirection  = donutDirection - 1
+              ImGui.Dummy(125, 1);ImGui.SameLine()
+              if ImGui.Button("Turn On") then
+                AUDIO.SET_VEH_RADIO_STATION(escortCar, bGuardData.vehRadio)
+              end
             end
-          end
-          ImGui.SameLine()
-          if ImGui.Button("   Stop  ") then
-            script.run_in_fiber(function()
-              TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 1000)
-              VEHICLE.SET_DRIFT_TYRES(escortCar, false)
-              VEHICLE.SET_VEHICLE_REDUCE_GRIP(escortCar, false)
-              VEHICLE.SET_VEHICLE_CHEAT_POWER_INCREASE(escortCar, 1.0)
-              TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
-            end)
-            doDonuts        = false
-            taskInProgress  = false
-            currentTask     = "None."
-          end
-        end
-        ImGui.Text("Start Shooting Random Civilians")
-        if ImGui.Button("Start Driveby") then
-          script.run_in_fiber(function(driveBy)
-            if escortLeftCar then
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-              PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-              PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-              TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-              TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-              PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-              escortLeftCar = false
-              driveBy:sleep(5000)
-            end
-            doingDriveBy    = true
-            doDonuts        = false
-            doingBurnout    = false
-            driveStarted    = false
-            driveToWp       = false
-            taskInProgress  = true
-            currentTask     = "shooting innocent people"
-          end)
-        end
-        if doingDriveBy then
-          ImGui.SameLine()
-          if ImGui.Button("   Stop  ") then
-            script.run_in_fiber(function()
-              TASK.CLEAR_PED_TASKS(escort_1)
-              TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-              TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
-              TASK.CLEAR_PED_TASKS(escort_2)
-              TASK.CLEAR_PED_TASKS(escort_3)
-              TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 1000)
+            ImGui.Text("Start Doing a Burnout")
+            if ImGui.Button("Do a Burnout") then
+              doingBurnout    = true
+              driveStarted    = false
+              driveToWp       = false
               doingDriveBy    = false
-              taskInProgress  = false
-              currentTask     = "None."
-            end)
+              doDonuts        = false
+              taskInProgress  = true
+              currentTask     = "doing a burnout"
+              script.run_in_fiber(function(burnout)
+                TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 30, 1000000)
+                if escortLeftCar then
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                  TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                  escortLeftCar = false
+                  burnout:sleep(5000)
+                end
+              end)
+            end
+            if doingBurnout then
+              ImGui.SameLine()
+                if ImGui.Button("   Stop   ") then
+                  script.run_in_fiber(function()
+                    TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 1000)
+                    doingBurnout    = false
+                    taskInProgress  = false
+                    currentTask     = "None."
+                  end)
+                end
+            end
+            ImGui.Text("Start Doing Donuts");ImGui.SameLine();ImGui.TextDisabled("(?)")
+            if ImGui.IsItemHovered() then
+              ImGui.BeginTooltip()
+              ImGui.Text("You can use the \"Change Direction\" button\nto turn donuts into mad drifts.")
+              ImGui.EndTooltip()
+            end
+            if ImGui.Button("Do Some Donuts") then
+              script.run_in_fiber(function(donuts)
+                if not VEHICLE.IS_VEHICLE_ON_ALL_WHEELS(escortCar) then
+                  VEHICLE.SET_VEHICLE_ON_GROUND_PROPERLY(escortCar, 5.0)
+                end
+                if escortLeftCar then
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                  PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                  TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                  escortLeftCar = false
+                  donuts:sleep(5000)
+                end
+                doDonuts        = true
+                doingBurnout    = false
+                driveStarted    = false
+                driveToWp       = false
+                doingDriveBy    = false
+                taskInProgress  = true
+                currentTask     = "doing MAAAD donuts"
+              end)
+            end
+            if doDonuts then
+              ImGui.SameLine()
+              if ImGui.Button("Change Direction") then
+                if donutDirection == 7 then
+                donutDirection   = donutDirection + 1
+                else
+                  donutDirection  = donutDirection - 1
+                end
+              end
+              ImGui.SameLine()
+              if ImGui.Button("   Stop  ") then
+                script.run_in_fiber(function()
+                  TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 1000)
+                  VEHICLE.SET_DRIFT_TYRES(escortCar, false)
+                  VEHICLE.SET_VEHICLE_REDUCE_GRIP(escortCar, false)
+                  VEHICLE.SET_VEHICLE_CHEAT_POWER_INCREASE(escortCar, 1.0)
+                  TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+                end)
+                doDonuts        = false
+                taskInProgress  = false
+                currentTask     = "None."
+              end
+            end
+            ImGui.Text("Start Shooting Random Civilians")
+            if ImGui.Button("Start Driveby") then
+              script.run_in_fiber(function(driveBy)
+                if escortLeftCar then
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                  PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                  TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                  escortLeftCar = false
+                  driveBy:sleep(5000)
+                end
+                doingDriveBy    = true
+                doDonuts        = false
+                doingBurnout    = false
+                driveStarted    = false
+                driveToWp       = false
+                taskInProgress  = true
+                currentTask     = "shooting innocent people"
+              end)
+            end
+            if doingDriveBy then
+              ImGui.SameLine()
+              if ImGui.Button("   Stop  ") then
+                script.run_in_fiber(function()
+                  TASK.CLEAR_PED_TASKS(escort_1)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                  TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+                  TASK.CLEAR_PED_TASKS(escort_2)
+                  TASK.CLEAR_PED_TASKS(escort_3)
+                  TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 1000)
+                  doingDriveBy    = false
+                  taskInProgress  = false
+                  currentTask     = "None."
+                end)
+              end
+            end
+          else
+            ImGui.Text("Your private escort can follow your car and\ncan drive you around as well.\nGet in the escort vehicle to see more options.")
           end
+        else
+          escortLeftCar = false
+          askedToLeave  = false
+          ImGui.TextWrapped("Escort vehicle not found!\n\nEscorts are useless without their vehicle. It is recommended that you dismiss them then spawn them again.")
         end
-      else
-        ImGui.Text("Your private escort can follow your car and\ncan drive you around as well.\nGet in the escort vehicle to see more options.")
       end
     end
     ImGui.EndTabItem()
   end
   if ImGui.BeginTabItem("Private Limo") then
     ImGui.Spacing();ImGui.Spacing()
-    if ImGui.Button("   Call Limo   ") then
-      if spawned_limo[1] == nil then
+    if spawned_limo[1] == nil then
+      if ImGui.Button("   Call Limo   ") then
         if flying then
           gui.show_error("Private Limo", "Land your private jet first!")
           return
@@ -1124,12 +1255,12 @@ billionaire_services:add_imgui(function()
           end
           limoDriver = PED.CREATE_PED("PED_TYPE_CIVMALE", 0xE75B4B1C, pedPos.x + (pedForwardX * 10), pedPos.y + (pedForwardY * 10), pedPos.z, pedHeading, true, false)
           PED.SET_PED_INTO_VEHICLE(limoDriver, limo, -1)
-          PED.SET_PED_AS_GROUP_MEMBER(limoDriver, myGroup)
           PED.SET_PED_CONFIG_FLAG(limoDriver, 402, true)
           PED.SET_PED_CONFIG_FLAG(limoDriver, 398, true)
           PED.SET_PED_CONFIG_FLAG(limoDriver, 167, true)
           PED.SET_PED_CONFIG_FLAG(limoDriver, 251, true)
           PED.SET_PED_CONFIG_FLAG(limoDriver, 255, true)
+          PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(limoDriver, true)
           ENTITY.SET_ENTITY_INVINCIBLE(limoDriver, true)
           VEHICLE.SET_VEHICLE_ENGINE_ON(limo, true, false, false)
           table.insert(spawned_driver, limoDriver)
@@ -1137,17 +1268,16 @@ billionaire_services:add_imgui(function()
           AUDIO.SET_VEH_RADIO_STATION(limo, "RADIO_22_DLC_BATTLE_MIX1_RADIO")
         end)
       end
-    end
-    ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
-    if ImGui.Button("   Dismiss   ") then
-      if spawned_limo[1] ~= nil then
+    else
+      if ImGui.Button("   Dismiss   ") then
         script.run_in_fiber(function(dismissLimo)
-          if limoStarted then
+          if limoWp or limoCr then
             TASK.CLEAR_PED_TASKS(limoDriver)
             TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
             TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
             TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
-            limoStarted = false
+            limoWp        = false
+            limoCr        = false
             limoDismissed = true
           end
           if sittingInLimo then
@@ -1161,6 +1291,7 @@ billionaire_services:add_imgui(function()
             dismissLimo:sleep(2000)
           end
           TASK.TASK_VEHICLE_DRIVE_WANDER(limoDriver, limo, 25, 2883621)
+          gui.show_message("Private Limo", "Your limo has been dismissed. Please wait for it to leave.")
           dismissLimo:sleep(10000)
           PED.REMOVE_PED_FROM_GROUP(limoDriver)
           TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
@@ -1168,16 +1299,15 @@ billionaire_services:add_imgui(function()
           ENTITY.SET_ENTITY_AS_MISSION_ENTITY(limo, true, true)
           dismissLimo:sleep(200)
           VEHICLE.DELETE_VEHICLE(limo)
+          spawned_limo = {}
         end)
-      else
-        gui.show_error("Private Limo", "There is no limo to dismiss!")
       end
     end
     ImGui.Spacing();ImGui.Spacing()
     ImGui.Text("Limo Options:")
     ImGui.Separator()
     if sittingInLimo then
-      ImGui.Spacing();ImGui.Spacing()
+      ImGui.Spacing()
       if ImGui.Button("Drive To Waypoint") then
         script.run_in_fiber(function(limoService)
           local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
@@ -1189,29 +1319,94 @@ billionaire_services:add_imgui(function()
           end
             TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(limoDriver, limo, destination.x, destination.y, destination.z, 25, 786603, 20.0)
             limoService:sleep(500)
-            limoStarted = true
+            limoWp = true
             gui.show_message("Private Limo", "Driving to waypoint...")
         end)
       end
-      ImGui.SameLine()ImGui.Spacing();ImGui.SameLine()ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()ImGui.SameLine();ImGui.Spacing();ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
-      if ImGui.Button(" Cruise Around ") then
-        limoStarted = true
+      ImGui.SameLine()
+      if ImGui.Button("Cruise Around") then
         script.run_in_fiber(function(limoService)
           TASK.TASK_VEHICLE_DRIVE_WANDER(limoDriver, limo, 25, 786603)
           limoService:sleep(500)
+          limoCr = true
         end)
-        gui.show_message("Private Limo", "Going for a ride...")
+        if limoWp then
+            gui.show_message("Private Limo", "Drive To Waypoint canceled. Going for a ride instead.")
+            limoWp = false
+        else
+          gui.show_message("Private Limo", "Going for a ride...")
+        end
       end
-      if limoStarted then
-        if ImGui.Button("   Cancel    ") then
+      if limoWp or limoCr then
+        ImGui.SameLine()
+        if ImGui.Button("Stop") then
           script.run_in_fiber(function()
             TASK.CLEAR_PED_TASKS(limoDriver)
             TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
             TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
             TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
-            limoStarted = false
+            limoWp = false
+            limoCr = false
           end)
         end
+      end
+      ImGui.Spacing()
+      ImGui.SameLine();ImGui.Text(" _________________Radio______________")
+      if AUDIO.IS_VEHICLE_RADIO_ON(limo) then
+        ImGui.Dummy(125, 1);ImGui.SameLine()
+        if ImGui.Button("Turn Off") then
+          AUDIO.SET_VEH_RADIO_STATION(limo, "OFF")
+        end
+        ImGui.Dummy(5, 1);ImGui.SameLine()
+        if ImGui.Button("< Previous Station") then
+          AUDIO.SET_RADIO_RETUNE_DOWN()
+        end
+        ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+        if ImGui.Button("Next Station >") then
+          AUDIO.SET_RADIO_RETUNE_UP()
+        end
+        local stationName = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
+        local displayName = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(stationName)
+        ImGui.Text("Now Playing: "..displayName)
+      else
+        ImGui.Dummy(125, 1);ImGui.SameLine()
+        if ImGui.Button("Turn On") then
+          AUDIO.SET_VEH_RADIO_STATION(limo, "RADIO_22_DLC_BATTLE_MIX1_RADIO")
+        end
+      end
+      ImGui.Spacing();ImGui.Separator()
+      ImGui.SameLine();ImGui.Text(" _________________Seats_____________")
+      ImGui.Dummy(5, 1);ImGui.SameLine()
+      if ImGui.Button(" < Previous Seat  ") then
+        script.run_in_fiber(function()
+          local numSeats = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(limo)
+          if limoSeat <= 1 then
+            limoSeat = numSeats
+          end
+          limoSeat = limoSeat - 1
+          if VEHICLE.IS_VEHICLE_SEAT_FREE(limo, limoSeat, true) then
+            PED.SET_PED_INTO_VEHICLE(self.get_ped(), limo, limoSeat)
+          else
+            limoSeat = limoSeat - 1
+            return
+          end
+        end)
+      end
+      ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+      if ImGui.Button("  Next Seat  >") then
+        script.run_in_fiber(function()
+          local numSeats = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(limo)
+          if limoSeat >= (numSeats - 1) then
+            limoSeat = 0
+          end
+          limoSeat = limoSeat + 1
+          if VEHICLE.IS_VEHICLE_SEAT_FREE(limo, limoSeat, true) then
+            PED.SET_PED_INTO_VEHICLE(self.get_ped(), limo, limoSeat)
+          else
+            limoSeat = limoSeat + 1
+            return
+          end
+        end)
       end
     else
       ImGui.Text("Get inside the limo to see the options.")
@@ -1235,13 +1430,19 @@ billionaire_services:add_imgui(function()
     if ImGui.Button("Debug Stuff") then
       script.run_in_fiber(function()
         local myPos = ENTITY.GET_ENTITY_COORDS(self.get_ped())
-        -- local streetHash  = PATHFIND.GET_STREET_NAME_AT_COORD(myPos.x, myPos.y, myPos.z)
-        -- local streetName  = HUD.GET_STREET_NAME_FROM_HASH_KEY(streetHash)
         local myHeading = ENTITY.GET_ENTITY_HEADING(self.get_ped())
-        -- if string.find(string.lower(streetName), "panorama") then retVal = true end
+        local streetHash  = PATHFIND.GET_STREET_NAME_AT_COORD(myPos.x, myPos.y, myPos.z)
+        local streetName  = HUD.GET_STREET_NAME_FROM_HASH_KEY(streetHash)
+        local currentRadio = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
+        local numSeats = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(pJet)
+        local myGroup  = PLAYER.GET_PLAYER_GROUP(self.get_ped())
+        if string.find(string.lower(streetName), "panorama") then retVal = true end
         log.debug("Player Position: "..tostring(myPos))
-        -- log.debug("Street Name: "..streetName)
         log.debug("Heading: "..tostring(myHeading))
+        log.debug("Street Name: "..streetName)
+        log.debug("Radio Station: "..tostring(currentRadio))
+        log.debug("Max Seats: "..tostring(numSeats))
+        log.debug("My Group: "..tostring(myGroup))
       end)
     end
   end
@@ -1319,18 +1520,18 @@ script.register_looped("services", function(services)
       services:sleep(3000)
       PED.REMOVE_PED_FROM_GROUP(guard_1)
       PED.DELETE_PED(guard_1)
-      spawned_bodyguards = {}
     end
     if ENTITY.DOES_ENTITY_EXIST(guard_2) and ENTITY.IS_ENTITY_DEAD(guard_2) then
       services:sleep(3000)
       PED.REMOVE_PED_FROM_GROUP(guard_2)
       PED.DELETE_PED(guard_2)
-      spawned_bodyguards = {}
     end
     if ENTITY.DOES_ENTITY_EXIST(guard_3) and ENTITY.IS_ENTITY_DEAD(guard_3) then
       services:sleep(3000)
       PED.REMOVE_PED_FROM_GROUP(guard_3)
       PED.DELETE_PED(guard_3)
+    end
+    if not ENTITY.DOES_ENTITY_EXIST(guard_1) and not ENTITY.DOES_ENTITY_EXIST(guard_2) and not ENTITY.DOES_ENTITY_EXIST(guard_3) then
       spawned_bodyguards = {}
     end
   end
@@ -1358,22 +1559,43 @@ script.register_looped("services", function(services)
             local wpCoords  = HUD.GET_BLIP_COORDS(wp)
             local dist      = SYSTEM.VDIST(vehCoods.x, vehCoods.y, vehCoods.z, wpCoords.x, wpCoords.y, wpCoords.z)
             if dist <= 20.0 then
-              driveToWp = false
               services:sleep(1000)
               gui.show_message("Private Security", "You have reached your destination.")
               TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
+              driveToWp      = false
+              driveStarted   = false
+              taskInProgress = false
+              currentTask    = "None."
             end
           else
             TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
-            driveToWp = false
+            driveToWp      = false
+            driveStarted   = false
+            taskInProgress = false
+            currentTask    = "None."
           end
         else
-          driveToWp = false
+          driveToWp      = false
+          driveStarted   = false
+          taskInProgress = false
+          currentTask    = "None."
         end
     end
     if dismissed then
-      if HUD.DOES_BLIP_EXIST(carBlip) then
-        HUD.SET_BLIP_ALPHA(carBlip, 100.0)
+      if ENTITY.DOES_ENTITY_EXIST(escortCar) then
+        if HUD.DOES_BLIP_EXIST(carBlip) then
+          HUD.SET_BLIP_ALPHA(carBlip, 100.0)
+        end
+      else
+        if HUD.DOES_BLIP_EXIST(escort_1Blip) then
+          HUD.SET_BLIP_ALPHA(escort_1Blip, 100.0)
+        end
+        if HUD.DOES_BLIP_EXIST(escort_2Blip) then
+          HUD.SET_BLIP_ALPHA(escort_2Blip, 100.0)
+        end
+        if HUD.DOES_BLIP_EXIST(escort_3Blip) then
+          HUD.SET_BLIP_ALPHA(escort_3Blip, 100.0)
+        end
       end
     end
     if ENTITY.DOES_ENTITY_EXIST(escortCar) then
@@ -1388,27 +1610,6 @@ script.register_looped("services", function(services)
         end
       end
     end
-    if ENTITY.DOES_ENTITY_EXIST(escort_1) and ENTITY.IS_ENTITY_DEAD(escort_1) and ENTITY.DOES_ENTITY_EXIST(escort_2) and ENTITY.IS_ENTITY_DEAD(escort_2) and ENTITY.DOES_ENTITY_EXIST(escort_3) and ENTITY.IS_ENTITY_DEAD(escort_3) then
-      PED.REMOVE_PED_FROM_GROUP(escort_1)
-      PED.REMOVE_PED_FROM_GROUP(escort_2)
-      PED.REMOVE_PED_FROM_GROUP(escort_3)
-      services:sleep(3000)
-      PED.DELETE_PED(escort_1)
-      PED.DELETE_PED(escort_2)
-      PED.DELETE_PED(escort_3)
-      if ENTITY.DOES_ENTITY_EXIST(escortCar) then
-        services:sleep(5000)
-        if not ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.DOES_ENTITY_EXIST(escort_3) then
-          VEHICLE.SET_VEHICLE_DOORS_SHUT(escortCar, false)
-          VEHICLE.SET_VEHICLE_DOORS_LOCKED(escortCar, 2)
-          ENTITY.SET_ENTITY_AS_MISSION_ENTITY(escortCar, true, true)
-          services:sleep(5000)
-          VEHICLE.DELETE_VEHICLE(escortCar)
-          escortLeftCar = false
-          spawned_escorts = {}
-        end
-      end
-    end
   end
   if spawned_limo[1] ~= nil then
     if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), limo) then
@@ -1416,31 +1617,44 @@ script.register_looped("services", function(services)
     else
       sittingInLimo = false
     end
-    if limoStarted then
+    if limoWp then
       if ENTITY.DOES_ENTITY_EXIST(limo) then
         if not sittingInLimo then
           TASK.CLEAR_PED_TASKS(limoDriver)
           TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
           TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
           TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
-          limoStarted = false
+          limoWp = false
         end
         local wp = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
         if HUD.DOES_BLIP_EXIST(wp) then
           local limoCoods  = ENTITY.GET_ENTITY_COORDS(limo)
           local wpCoords   = HUD.GET_BLIP_COORDS(wp)
           local dist       = SYSTEM.VDIST(limoCoods.x, limoCoods.y, limoCoods.z, wpCoords.x, wpCoords.y, wpCoords.z)
-          if dist <= 50.0 then
-            limoStarted = false
+          if dist <= 30.0 then
+            limoWp = false
             services:sleep(1000)
             gui.show_message("Private Limo", "You have reached your destination.")
           end
         else
           TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
-          limoStarted = false
+          limoWp = false
         end
       else
-        limoStarted = false
+        limoWp = false
+      end
+    end
+    if limoCr then
+      if ENTITY.DOES_ENTITY_EXIST(limo) then
+        if not sittingInLimo then
+          TASK.CLEAR_PED_TASKS(limoDriver)
+          TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
+          TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
+          TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
+          limoCr = false
+        end
+      else
+        limoCr = false
       end
     end
     if flying then
@@ -1484,6 +1698,16 @@ script.register_looped("Plane Landing", function(planeland)
   end
 end)
 script.register_looped("Jet Manager", function(jetMgr)
+  if spawned_jet[1] ~= nil then
+    local myPos  = ENTITY.GET_ENTITY_COORDS(self.get_ped(), false)
+    local jetPos = ENTITY.GET_ENTITY_COORDS(pJet, false)
+    local jetDist = SYSTEM.VDIST(myPos.x, myPos.y, myPos.z, jetPos.x, jetPos.y, jetPos.z)
+    if jetDist > 1000 then
+      jetTpBtn = true
+    else
+      jetTpBtn = false
+    end
+  end
   if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
     local jetPos = ENTITY.GET_ENTITY_COORDS(pJet, false)
     local jetAltitude = jetPos.z
@@ -1581,8 +1805,10 @@ script.register_looped("misc", function(misc)
     local myVeh      = PED.GET_VEHICLE_PED_IS_USING(self.get_ped())
     local myVehModel = ENTITY.GET_ENTITY_MODEL(myVeh)
     if VEHICLE.IS_THIS_MODEL_A_CAR(myVehModel) or VEHICLE.IS_THIS_MODEL_A_BIKE(myVehModel) or VEHICLE.IS_THIS_MODEL_A_QUADBIKE(myVehModel) or VEHICLE.IS_THIS_MODEL_A_BICYCLE(myVehModel) then
-      validModel      = true
-      startFollowTask = true
+      if not sittingInEscortCar then
+        validModel      = true
+        startFollowTask = true
+      end
     else
       validModel      = false
       startFollowTask = false
@@ -1656,19 +1882,23 @@ script.register_looped("misc", function(misc)
     if not sittingInEscortCar then
       local myPos = ENTITY.GET_ENTITY_COORDS(self.get_ped())
       if PED.IS_PED_SHOOTING_IN_AREA(self.get_ped(), myPos.x - 100, myPos.y - 100, myPos.z -100, myPos.x + 100, myPos.y + 100, myPos.z + 100, false, true) and not escortLeftCar then
-        startFollowTask = false
-        PED.SET_PED_CONFIG_FLAG(escort_1, 402, false)
-        PED.SET_PED_CONFIG_FLAG(escort_2, 402, false)
-        PED.SET_PED_CONFIG_FLAG(escort_3, 402, false)
-        TASK.TASK_LEAVE_VEHICLE(escort_1, escortCar, 256)
-        TASK.TASK_LEAVE_VEHICLE(escort_2, escortCar, 256)
-        TASK.TASK_LEAVE_VEHICLE(escort_3, escortCar, 256)
-        escortLeftCar = true
+        if not PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
+          startFollowTask = false
+          PED.SET_PED_CONFIG_FLAG(escort_1, 402, false)
+          PED.SET_PED_CONFIG_FLAG(escort_2, 402, false)
+          PED.SET_PED_CONFIG_FLAG(escort_3, 402, false)
+          TASK.TASK_LEAVE_VEHICLE(escort_1, escortCar, 256)
+          TASK.TASK_LEAVE_VEHICLE(escort_2, escortCar, 256)
+          TASK.TASK_LEAVE_VEHICLE(escort_3, escortCar, 256)
+          escortLeftCar = true
+        end
       end
     end
   end
   if spawned_bodyguards[1] ~= nil then
     if not dismissedGuards then
+      local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
+      ---------auto TP bodyguards-------------------------------
       if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
         if not validModel then
           return
@@ -1684,13 +1914,16 @@ script.register_looped("misc", function(misc)
           if dist > 100 then
             if allowInside then
               misc:sleep(1000)
+              if not CAM.IS_SCREEN_FADED_IN() then
+                return
+              end
               TASK.CLEAR_PED_TASKS(g)
-              ENTITY.SET_ENTITY_COORDS_NO_OFFSET(g, mPos.x - (fwdX * 2), mPos.y - (fwdY * 2), mPos.z, true, false, false)
+              ENTITY.SET_ENTITY_COORDS_NO_OFFSET(g, mPos.x + (fwdX * 2), mPos.y + (fwdY * 2), mPos.z, true, false, false)
             else
-              misc:sleep(2000)
+              misc:sleep(1000)
               if INTERIOR.GET_INTERIOR_FROM_ENTITY(self.get_ped()) == 0 then
                 TASK.CLEAR_PED_TASKS(g)
-                ENTITY.SET_ENTITY_COORDS_NO_OFFSET(g, mPos.x - (fwdX * 2), mPos.y - (fwdY * 2), mPos.z, true, false, false)
+                ENTITY.SET_ENTITY_COORDS_NO_OFFSET(g, mPos.x + (fwdX * 2), mPos.y + (fwdY * 2), mPos.z, true, false, false)
               else
                 return
               end
@@ -1698,12 +1931,31 @@ script.register_looped("misc", function(misc)
           end
         end
       end
+      ------------prevent bodyguards from leaving group if the player dies-----------------
+      if not PED.IS_PED_GROUP_MEMBER(guard_1, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(guard_1, myGroup)
+      end
+      if not PED.IS_PED_GROUP_MEMBER(guard_2, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(guard_2, myGroup)
+      end
+      if not PED.IS_PED_GROUP_MEMBER(guard_3, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
+      end
+      if spawned_limo[1] ~= nil then
+        if sittingInLimo then
+          PED.SET_PED_INTO_VEHICLE(guard_1, limo, 2)
+          PED.SET_PED_INTO_VEHICLE(guard_2, limo, 3)
+          PED.SET_PED_INTO_VEHICLE(guard_3, limo, 4)
+        end
+      end
     end
   end
   if spawned_escorts[1] ~= nil then
     if not dismissed and not flying then
+      local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
+      -----------------------auto TP escorts----------------------------
       if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
-        if not validModel then
+        if not validModel and not sittingInEscortCar then
           if not PED.IS_PED_SITTING_IN_VEHICLE(escort_1, escortCar) then
             TASK.CLEAR_PED_TASKS(escort_1)
             TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
@@ -1723,11 +1975,14 @@ script.register_looped("misc", function(misc)
           if dist > 100 then
             if allowInside then
               misc:sleep(1000)
+              if not CAM.IS_SCREEN_FADED_IN() then
+                return
+              end
               TASK.CLEAR_PED_TASKS(e)
               ENTITY.SET_ENTITY_COORDS_NO_OFFSET(e, mPos.x - (fwdX * 2), mPos.y - (fwdY * 2), mPos.z, true, false, false)
             else
-              misc:sleep(2000)
               if INTERIOR.GET_INTERIOR_FROM_ENTITY(self.get_ped()) == 0 then
+                misc:sleep(2000)
                 TASK.CLEAR_PED_TASKS(e)
                 ENTITY.SET_ENTITY_COORDS_NO_OFFSET(e, mPos.x - (fwdX * 2), mPos.y - (fwdY * 2), mPos.z, true, false, false)
               else
@@ -1748,27 +2003,93 @@ script.register_looped("misc", function(misc)
             misc:sleep(1000)
             ENTITY.SET_ENTITY_COORDS_NO_OFFSET(escortCar, mPos.x - (fwdX * 12), mPos.y - (fwdY * 12), mPos.z, true, false, false)
             ENTITY.SET_ENTITY_HEADING(escortCar, mHdng)
-            if startFollowTask and not PED.IS_PED_SITTING_IN_VEHICLE(escort_1, escortCar) then
-              misc:sleep(10000) -- same time as the timeout for ENTER_VEHICLE task.
-              PED.SET_PED_INTO_VEHICLE(escort_1, escortCar, -1) -- if the driver fails to enter the vehicle after it teleports, force them into it.
+            if startFollowTask then
+              local escortSpd = ENTITY.GET_ENTITY_SPEED(escortCar)
+              local mySpd     = ENTITY.GET_ENTITY_SPEED(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()))
+              if mySpd > escortSpd then
+                VEHICLE.SET_VEHICLE_FORWARD_SPEED(escortCar, mySpd)
+                misc:sleep(2000)
+              end
+              if not sittingInEscortCar then
+                misc:sleep(10000) -- same time as the timeout for ENTER_VEHICLE task.
+                PED.SET_PED_INTO_VEHICLE(escort_1, escortCar, -1) -- if the driver fails to enter the vehicle after it teleports, force them into it.
+              end
             end
           end
+        end
+      end
+      ------------prevent escorts from leaving group if the player dies---------------------
+      if not PED.IS_PED_GROUP_MEMBER(escort_1, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(escort_1, myGroup)
+      end
+      if not PED.IS_PED_GROUP_MEMBER(escort_2, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(escort_2, myGroup)
+      end
+      if not PED.IS_PED_GROUP_MEMBER(escort_3, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(escort_3, myGroup)
+      end
+      if ENTITY.DOES_ENTITY_EXIST(escort_1) and ENTITY.IS_ENTITY_DEAD(escort_1) then
+        misc:sleep(5000)
+        PED.REMOVE_PED_FROM_GROUP(escort_1)
+        PED.DELETE_PED(escort_1)
+      end
+      if ENTITY.DOES_ENTITY_EXIST(escort_2) and ENTITY.IS_ENTITY_DEAD(escort_2) then
+        misc:sleep(5000)
+        PED.REMOVE_PED_FROM_GROUP(escort_2)
+        PED.DELETE_PED(escort_2)
+      end
+      if ENTITY.DOES_ENTITY_EXIST(escort_3) and ENTITY.IS_ENTITY_DEAD(escort_3) then
+        misc:sleep(5000)
+        PED.REMOVE_PED_FROM_GROUP(escort_3)
+        PED.DELETE_PED(escort_3)
+      end
+      ----------------------reset everything if everyone is dead-----------------------------
+      if not ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.DOES_ENTITY_EXIST(escort_3) then
+        escortLeftCar   = false
+        askedToLeave    = false
+        taskInProgress  = false
+        doDonuts        = false
+        doingDriveBy    = false
+        doingBurnout    = false
+        driveStarted    = false
+        driveToWp       = false
+        currentTask     = "None."
+        spawned_escorts = {}
+        dismissed       = true
+      end
+      if not ENTITY.DOES_ENTITY_EXIST(escort_1) then
+        if ENTITY.DOES_ENTITY_EXIST(escortCar) then
+          VEHICLE.SET_VEHICLE_DOORS_SHUT(escortCar, false)
+          VEHICLE.SET_VEHICLE_DOORS_LOCKED(escortCar, 2)
+          ENTITY.SET_ENTITY_AS_MISSION_ENTITY(escortCar, true, true)
+          misc:sleep(5000)
+          VEHICLE.DELETE_VEHICLE(escortCar) -- no driver, no car.
         end
       end
     end
   end
   if sittingInEscortCar then
+    startFollowTask = false
     if escortLeftCar then
-      TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-      TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-      TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-      PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-      PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-      PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-      TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-      TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-      PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-      escortLeftCar = false
+      if not askedToLeave then
+        TASK.CLEAR_PED_TASKS(escort_1)
+        TASK.CLEAR_PED_TASKS(escort_2)
+        TASK.CLEAR_PED_TASKS(escort_3)
+        PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+        -- PED.SET_PED_CONFIG_FLAG(escort_1, 167, false)
+        PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+        -- PED.SET_PED_CONFIG_FLAG(escort_2, 167, false)
+        PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+        -- PED.SET_PED_CONFIG_FLAG(escort_3, 167, false)
+        TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+        TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+        PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+        misc:sleep(3000)
+        escortLeftCar = false
+        -- PED.SET_PED_CONFIG_FLAG(escort_1, 167, true)
+        -- PED.SET_PED_CONFIG_FLAG(escort_1, 167, true)
+        -- PED.SET_PED_CONFIG_FLAG(escort_1, 167, true)
+      end
     end
   end
 end)
