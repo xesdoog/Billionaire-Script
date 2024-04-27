@@ -10,7 +10,6 @@ Lua script for YimMenu that provides billionaire services for GTA V players.
 1. Choose an airport from the dropdown list. A [Luxor Deluxe](https://static.wikia.nocookie.net/gtawiki/images/1/1f/LuxorDeluxe-GTAV-front.png/revision/latest/scale-to-width-down/1000?cb=20150614102306) will spawn there.
 2. Go to your private jet *(It will be marked with a plane blip ![radar_player_plane](https://github.com/xesdoog/Billionaire-Script/assets/66764345/2cd7a70c-77c9-4c24-806d-fe744e216009)
  on the map).*
-   > I will probably add a teleport option in the future.
 4. Enter the jet then choose one of the options that will appear.
 - Available options:
   - **Fly Around Waypoint**:
@@ -60,6 +59,7 @@ This feature has two main options:
 
 ## Known Issues:
 - The jet landing process is a bit random. Sometimes the pilot will land without any issues, sometimes he will take forever and in some other occasions, he will crash the jet. This is not a *"literally unplayable"* type of issue since players have the option to skip the landing part.
+- While having "Allow Teleport Inside" activated, if you get inside any interior, your bodyguards and escorts will follow without any issues but when you exit, one of them will always drop through the floor and start screaming for a few seconds before being automatically teleported to your location once again. This has to do with how GTA handles interiors. For example: if you have a Chop Shop located at Strawberry, when you go inside it the game teleports you to a completely different location under the map at El Burro Heights and when you go outside, the game teleports you back to Strawberry and places you in front of the door. again, this is not a *"literally unplayable"* issue because the glitched bodyguard/escort will eventually teleport to you again.
 
 ## TO DO:
 - [x] ~Improve the flight system~. ✅**Done.**
