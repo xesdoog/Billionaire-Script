@@ -1414,8 +1414,8 @@ billionaire_services:add_imgui(function()
     ImGui.EndTabItem()
   end
   --------------------debug section------------------------------------------------------------------------------
-  ImGui.Spacing();ImGui.Dummy(240, 1);ImGui.SameLine()
-  ImGui.TextDisabled("v0.3-stable")
+  ImGui.Spacing();ImGui.Dummy(230, 1);ImGui.SameLine()
+  ImGui.TextDisabled("v0.4-release")
   if ImGui.IsItemHovered() and ImGui.IsItemClicked(0) then
     dbgclc = dbgclc + 1
   end
