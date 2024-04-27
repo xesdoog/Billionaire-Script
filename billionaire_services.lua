@@ -1237,7 +1237,6 @@ billionaire_services:add_imgui(function()
           VEHICLE.SET_VEHICLE_COLOURS(limo, 111, 111)
           VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(limo, false)
           VEHICLE.SET_VEHICLE_INDIVIDUAL_DOORS_LOCKED(limo, 0, 2)
-          VEHICLE.SET_VEHICLE_INDIVIDUAL_DOORS_LOCKED(limo, 1, 2)
           VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(limo, false)
           VEHICLE.SET_VEHICLE_ALLOW_HOMING_MISSLE_LOCKON(limo, false, 0)
           VEHICLE.SET_VEHICLE_STRONG(limo, true)
@@ -1940,13 +1939,6 @@ script.register_looped("misc", function(misc)
       end
       if not PED.IS_PED_GROUP_MEMBER(guard_3, myGroup) then
         PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
-      end
-      if spawned_limo[1] ~= nil then
-        if sittingInLimo then
-          PED.SET_PED_INTO_VEHICLE(guard_1, limo, 2)
-          PED.SET_PED_INTO_VEHICLE(guard_2, limo, 3)
-          PED.SET_PED_INTO_VEHICLE(guard_3, limo, 4)
-        end
       end
     end
   end
