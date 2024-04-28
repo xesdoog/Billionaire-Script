@@ -20,6 +20,8 @@ local limoDriver                = 0
 local limoSeat                  = 2
 local donutDirection            = 7
 local dbgclc                    = 0
+local arprtLstTop               = true
+local disableArprtLst           = false
 local jetTpBtn                  = false
 local initialFlight             = false
 local newFlight                 = false
@@ -42,6 +44,8 @@ local doingBurnout              = false
 local doingDriveBy              = false
 local doDonuts                  = false
 local escortLeftCar             = false
+local onFoot                    = false
+local escortCarAway             = false
 local askedToLeave              = false
 local sittingInLimo             = false
 local limoWp                    = false
@@ -77,7 +81,7 @@ local bodyguards = {
   {name = "Families OGs",         pedType = "PED_TYPE_GANG_AFRICAN_AMERICAN", modelHash = {a = 0x33A464E5, b = 0xE83B93B7, c = 0x84302B09}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 3265236814,  vehCol = 53,  vehRadio = "RADIO_03_HIPHOP_NEW"},  -- //
   {name = "Vagos Esses",          pedType = "PED_TYPE_GANG_PUERTO_RICAN",     modelHash = {a = 0x837B64DE, b = 0x5AA42C21, c = 0x964D12DC}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 2254540506,  vehCol = 88,  vehRadio = "RADIO_08_MEXICAN"   },  -- //
   {name = "Lost MC",              pedType = "PED_TYPE_GANG_BIKER_1",          modelHash = {a = 0x32B11CDC, b = 0x4F46D607, c = 0xFD5537DE}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 2549763894,  vehCol = 0,   vehRadio = "RADIO_04_PUNK"      },  -- //
-  {name = "Armenian Mobsters",    pedType = "PED_TYPE_GANG_ALBANIAN",         modelHash = {a = 0xE7714013, b = 0xFDA94268, c = 0xF1E823A2}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 83136452,    vehCol = 111, vehRadio = "RADIO_13_JAZZ"      },  -- //
+  {name = "Armenian Mobsters",    pedType = "PED_TYPE_GANG_ALBANIAN",         modelHash = {a = 0xE7714013, b = 0xFDA94268, c = 0xF1E823A2}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 83136452,    vehCol = 111, vehRadio = "RADIO_15_MOTOWN"      },  -- //
   {name = "Cartel Sicarios",      pedType = "PED_TYPE_GANG_PUERTO_RICAN",     modelHash = {a = 0x995B3F9F, b = 0x7ED5AD78, c = 0xE6AC74A4}, weaponHash = {main = 0xBFEFFF6D, sec = 350597077},  vehicle = 4256087847,  vehCol = 0,   vehRadio = "RADIO_08_MEXICAN"   },  -- Assault Rifle + Tactical SMG
   {name = "Bad Bitches",          pedType = "PED_TYPE_PROSTITUTE",            modelHash = {a = 0x28ABF95,  b = 0x81441B71, c = 0xAEEA76B5}, weaponHash = {main = 350597077,  sec = 0},          vehicle = 461465043,   vehCol = 30,  vehRadio = "RADIO_02_POP"       },  -- Tactical SMG
 }
@@ -93,7 +97,13 @@ local function displayAirports()
   for _, airport in ipairs(filteredAirports) do
     table.insert(airportNames, airport.name)
   end
-  airport_index, used = ImGui.Combo("##airportList", airport_index, airportNames, #filteredAirports)
+  if disableArprtLst then
+    ImGui.BeginDisabled(true)
+    airport_index, used = ImGui.Combo("##airportList", airport_index, airportNames, #filteredAirports)
+    ImGui.EndDisabled()
+  else
+    airport_index, used = ImGui.Combo("##airportList", airport_index, airportNames, #filteredAirports)
+  end
 end
 local function updateGuards()
   filteredGuards = {}
@@ -169,16 +179,22 @@ end
 billionaire_services:add_imgui(function()
   ImGui.BeginTabBar("Billionaire Services", ImGuiTabBarFlags.None)
   if ImGui.BeginTabItem("Private Jet") then
-    ImGui.Text("Choose an Airport:")
-    ImGui.PushItemWidth(280)
-    displayAirports()
-    ImGui.PopItemWidth()
+    if arprtLstTop then
+      if disableArprtLst then
+        ImGui.TextDisabled("Choose an Airport:")
+      else
+        ImGui.Text("Choose an Airport:")
+      end
+      ImGui.PushItemWidth(280)
+      displayAirports()
+      ImGui.PopItemWidth()
+    end
     local airportData   = filteredAirports[airport_index + 1]
     local jetModel      = 0xB79F589E
     local pilotModel    = 0x864ED68E
     local copilotModel  = 0xE75B4B1C
     if spawned_jet[1] == nil then
-      if ImGui.Button("Spawn Private Jet") then
+      if ImGui.Button("Call Your Private Jet") then
         jetDismissed = false
         script.run_in_fiber(function(privateJet)
           while not STREAMING.HAS_MODEL_LOADED(jetModel) do
@@ -204,7 +220,6 @@ billionaire_services:add_imgui(function()
           pilot = PED.CREATE_PED_INSIDE_VEHICLE(pJet, "PED_TYPE_CIVMALE", pilotModel, -1, true, false)
           ENTITY.SET_ENTITY_INVINCIBLE(pilot, true)
           table.insert(spawned_pilot, pilot)
-          local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
           PED.SET_PED_CONFIG_FLAG(pilot, 251, true)
           PED.SET_PED_CONFIG_FLAG(pilot, 255, true)
           PED.SET_PED_CONFIG_FLAG(pilot, 398, true)
@@ -235,8 +250,10 @@ billionaire_services:add_imgui(function()
         gui.show_message("Private Jet", "Your private jet is waiting for you at "..airportData.name..".")
       end
     else
+      arprtLstTop = false
       if not jetDismissed then
-        if ImGui.Button(" Dismiss ") then
+        ImGui.Spacing();ImGui.Spacing()
+        if ImGui.Button(" Dismiss Your Jet ") then
           if not flying then
             showPilotLeavingMsg = true
             jetDismissed        = true
@@ -262,6 +279,7 @@ billionaire_services:add_imgui(function()
                   dismissJet:sleep(200)
                   VEHICLE.DELETE_VEHICLE(pJet)
                 end
+                arprtLstTop = true
               end
               for k, _ in ipairs(spawned_jet) do
                 table.remove(spawned_jet, k)
@@ -435,6 +453,16 @@ billionaire_services:add_imgui(function()
         ImGui.Text("Landing Options:")
         ImGui.Separator()
         if can_land then
+          if not arprtLstTop then
+            if disableArprtLst then
+              ImGui.TextDisabled("Choose an Airport:")
+            else
+              ImGui.Text("Choose an Airport:")
+            end
+            ImGui.PushItemWidth(280)
+            displayAirports()
+            ImGui.PopItemWidth()
+          end
           if not startLandingProcess and not started_landing then
             if ImGui.Button("Land At "..airportData.name) then
               local jetPos      = ENTITY.GET_ENTITY_COORDS(pJet, false)
@@ -460,14 +488,14 @@ billionaire_services:add_imgui(function()
                         PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
                         escortLeftCar = false
                       end
-                      gui.show_message("Private Jet", "Flying towards "..airportData.name..". Your private escort will meet you there.")
+                      gui.show_message("Private Jet", "Flying towards "..airportData.name..". Your private escort will meet you there. Enjoy your flight!")
                       STREAMING.REQUEST_COLLISION_AT_COORD(airportData.escrtPos.x, airportData.escrtPos.y, airportData.escrtPos.z)
                       script:sleep(5000)
                       ENTITY.SET_ENTITY_COORDS(escortCar, airportData.escrtPos.x, airportData.escrtPos.y, airportData.escrtPos.z, true, false, false, true)
                       ENTITY.SET_ENTITY_HEADING(escortCar, airportData.escrtHdng)
                     end
                   else
-                    gui.show_message("Private Jet", "Flying towards "..airportData.name.."...")
+                    gui.show_message("Private Jet", "Flying towards "..airportData.name..". Enjoy your flight!")
                   end
                 end)
               end
@@ -506,7 +534,9 @@ billionaire_services:add_imgui(function()
             initialFlight       = true
             newFlight           = false
             flying              = false
+            disableArprtLst        = false
             skipLanding:sleep(1000)
+            gui.show_message("Private Jet", "Welcome to "..airportData.name..". We hope you had a good flight!")
             showLandingSkip = false
           end)
         end
@@ -953,17 +983,79 @@ billionaire_services:add_imgui(function()
             end
           end
           ImGui.Dummy(120, 1);ImGui.SameLine()
-          if ImGui.Button("Repair Vehicle") then
+          if ImGui.Button(" Repair Vehicle ") then
             script.run_in_fiber(function()
             VEHICLE.SET_VEHICLE_FIXED(escortCar)
             VEHICLE.SET_VEHICLE_DEFORMATION_FIXED(escortCar)
             end)
           end
+          if onFoot and escortCarAway then
+            ImGui.Dummy(126, 1);ImGui.SameLine()
+            if ImGui.Button("Bring Vehicle") then
+              script.run_in_fiber(function(bringVeh)
+                if INTERIOR.GET_INTERIOR_FROM_ENTITY(self.get_ped()) == 0 then
+                  local mPos  = ENTITY.GET_ENTITY_COORDS(self.get_ped(), false)
+                  local mHdng = ENTITY.GET_ENTITY_HEADING(self.get_ped())
+                  local fwdX  = ENTITY.GET_ENTITY_FORWARD_X(self.get_ped())
+                  local fwdY  = ENTITY.GET_ENTITY_FORWARD_Y(self.get_ped())
+                  if escortLeftCar then
+                    if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+                      TASK.CLEAR_PED_TASKS(escort_1)
+                      PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                      PED.SET_PED_INTO_VEHICLE(escort_1, escortCar, -1)
+                    end
+                    if ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.IS_ENTITY_DEAD(escort_2) then
+                      TASK.CLEAR_PED_TASKS(escort_2)
+                      PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                      PED.SET_PED_INTO_VEHICLE(escort_2, escortCar, 0)
+                    end
+                    if ENTITY.DOES_ENTITY_EXIST(escort_3) and not ENTITY.IS_ENTITY_DEAD(escort_3) then
+                      TASK.CLEAR_PED_TASKS(escort_3)
+                      PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                      PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                    end
+                    escortLeftCar = false
+                    askedToLeave  = false
+                    bringVeh:sleep(500)
+                  end
+                  ENTITY.SET_ENTITY_COORDS_NO_OFFSET(escortCar, mPos.x - (fwdX * 12), mPos.y - (fwdY * 12), mPos.z, true, false, false)
+                  ENTITY.SET_ENTITY_HEADING(escortCar, mHdng)
+                else
+                  gui.show_warning("Private Escort", "You cannot bring the escort vehicle inside.")
+                  bringVeh:sleep(1000)
+                  return
+                end
+              end)
+            end
+          end
           ImGui.Text("More Options:")
           ImGui.Separator()
           ImGui.Spacing()
           if sittingInEscortCar then
-            ImGui.Dummy(5, 1);ImGui.SameLine()
+            ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Radio")
+            if AUDIO.IS_VEHICLE_RADIO_ON(escortCar) then
+              ImGui.Dummy(125, 1);ImGui.SameLine()
+              if ImGui.Button("Turn Off") then
+                AUDIO.SET_VEH_RADIO_STATION(escortCar, "OFF")
+              end
+              ImGui.Dummy(5, 1);ImGui.SameLine()
+              if ImGui.Button("< Previous Station") then
+                AUDIO.SET_RADIO_RETUNE_DOWN()
+              end
+              ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+              if ImGui.Button("Next Station >") then
+                AUDIO.SET_RADIO_RETUNE_UP()
+              end
+              local stationName = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
+              local displayName = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(stationName)
+              ImGui.Text("Now Playing: "..displayName)
+              ImGui.Separator()
+            else
+              ImGui.Dummy(125, 1);ImGui.SameLine()
+              if ImGui.Button("Turn On") then
+                AUDIO.SET_VEH_RADIO_STATION(escortCar, bGuardData.vehRadio)
+              end
+            end
             if ImGui.Button("Drive To Waypoint") then
               script.run_in_fiber(function()
                 local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
@@ -996,7 +1088,7 @@ billionaire_services:add_imgui(function()
                 currentTask     = "driving to waypoint"
               end)
             end
-            ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+            ImGui.SameLine();
             if ImGui.Button("Cruise Around") then
               script.run_in_fiber(function(cruisin)
                 if escortLeftCar then
@@ -1037,30 +1129,6 @@ billionaire_services:add_imgui(function()
                   taskInProgress  = false
                   currentTask     = "None."
                 end)
-              end
-            end
-            ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Radio")
-            if AUDIO.IS_VEHICLE_RADIO_ON(escortCar) then
-              ImGui.Dummy(125, 1);ImGui.SameLine()
-              if ImGui.Button("Turn Off") then
-                AUDIO.SET_VEH_RADIO_STATION(escortCar, "OFF")
-              end
-              ImGui.Dummy(5, 1);ImGui.SameLine()
-              if ImGui.Button("< Previous Station") then
-                AUDIO.SET_RADIO_RETUNE_DOWN()
-              end
-              ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
-              if ImGui.Button("Next Station >") then
-                AUDIO.SET_RADIO_RETUNE_UP()
-              end
-              local stationName = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
-              local displayName = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(stationName)
-              ImGui.Text("Now Playing: "..displayName)
-              ImGui.Separator()
-            else
-              ImGui.Dummy(125, 1);ImGui.SameLine()
-              if ImGui.Button("Turn On") then
-                AUDIO.SET_VEH_RADIO_STATION(escortCar, bGuardData.vehRadio)
               end
             end
             ImGui.Text("Start Doing a Burnout")
@@ -1435,15 +1503,42 @@ billionaire_services:add_imgui(function()
         local streetHash  = PATHFIND.GET_STREET_NAME_AT_COORD(myPos.x, myPos.y, myPos.z)
         local streetName  = HUD.GET_STREET_NAME_FROM_HASH_KEY(streetHash)
         local currentRadio = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
-        local numSeats = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(pJet)
+        local currentTrack = AUDIO.GET_CURRENT_TRACK_SOUND_NAME(currentRadio)
+        local trackName = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(currentTrack)
+        local numSeats = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()))
         local myGroup  = PLAYER.GET_PLAYER_GROUP(self.get_ped())
-        if string.find(string.lower(streetName), "panorama") then retVal = true end
+        local e1Hp = ENTITY.GET_ENTITY_HEALTH(guard_1)
+        local e2Hp = ENTITY.GET_ENTITY_HEALTH(guard_2)
+        local e3Hp = ENTITY.GET_ENTITY_HEALTH(guard_3)
+        -- if string.find(string.lower(streetName), "panorama") then retVal = true end
         log.debug("Player Position: "..tostring(myPos))
         log.debug("Heading: "..tostring(myHeading))
         log.debug("Street Name: "..streetName)
-        log.debug("Radio Station: "..tostring(currentRadio))
-        log.debug("Max Seats: "..tostring(numSeats))
+        if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
+          log.debug("Radio Station: "..tostring(currentRadio))
+          log.debug("Max Passengers: "..tostring(numSeats))
+        end
         log.debug("My Group: "..tostring(myGroup))
+        if ENTITY.DOES_ENTITY_EXIST(guard_1) then
+          log.debug("BG1 Health: "..tostring(e1Hp))
+        end
+        if ENTITY.DOES_ENTITY_EXIST(guard_2) then
+          log.debug("BG2 Health: "..tostring(e2Hp))
+        end
+        if ENTITY.DOES_ENTITY_EXIST(guard_3) then
+          log.debug("BG3 Health: "..tostring(e3Hp))
+        end
+        log.debug("Track Name: "..tostring(trackName))
+      end)
+    end
+    if ImGui.Button("Loud Radio On") then
+      script.run_in_fiber(function()
+        AUDIO.SET_VEHICLE_RADIO_LOUD(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), true)
+      end)
+    end
+    if ImGui.Button("Loud Radio Off") then
+      script.run_in_fiber(function()
+        AUDIO.SET_VEHICLE_RADIO_LOUD(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), false)
       end)
     end
   end
@@ -1559,9 +1654,9 @@ script.register_looped("services", function(services)
             local vehCoods  = ENTITY.GET_ENTITY_COORDS(escortCar)
             local wpCoords  = HUD.GET_BLIP_COORDS(wp)
             local dist      = SYSTEM.VDIST(vehCoods.x, vehCoods.y, vehCoods.z, wpCoords.x, wpCoords.y, wpCoords.z)
-            if dist <= 20.0 then
-              services:sleep(1000)
+            if dist <= 50.0 then
               gui.show_message("Private Security", "You have reached your destination.")
+              services:sleep(2000)
               TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
               driveToWp      = false
               driveStarted   = false
@@ -1569,6 +1664,7 @@ script.register_looped("services", function(services)
               currentTask    = "None."
             end
           else
+            gui.show_message("Private Security", "Waypoint was removed. Canceling trip...")
             TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
             driveToWp      = false
             driveStarted   = false
@@ -1632,12 +1728,14 @@ script.register_looped("services", function(services)
           local limoCoods  = ENTITY.GET_ENTITY_COORDS(limo)
           local wpCoords   = HUD.GET_BLIP_COORDS(wp)
           local dist       = SYSTEM.VDIST(limoCoods.x, limoCoods.y, limoCoods.z, wpCoords.x, wpCoords.y, wpCoords.z)
-          if dist <= 30.0 then
-            limoWp = false
-            services:sleep(1000)
+          if dist <= 50.0 then
             gui.show_message("Private Limo", "You have reached your destination.")
+            services:sleep(2000)
+            TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
+            limoWp = false
           end
         else
+          gui.show_message("Private Limo", "Waypoint was removed. Canceling trip...")
           TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
           limoWp = false
         end
@@ -1669,7 +1767,7 @@ script.register_looped("services", function(services)
           PED.DELETE_PED(limoDriver)
         end
         if showLimoMsg then
-          gui.show_message("Private Limo", "Your private limo has been dismissed. Have a nice flight!")
+          gui.show_message("Private Limo", "Your private limo has been dismissed. Enjoy your flight!")
           showLimoMsg = false
         end
         spawned_limo = {}
@@ -1744,6 +1842,11 @@ script.register_looped("Jet Manager", function(jetMgr)
       -- end
     end
   end
+  if startLandingProcess or started_landing then
+    disableArprtLst = true
+  else
+    disableArprtLst = false
+  end
   if flying and not PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
     showBailMsg = true
     if ENTITY.DOES_ENTITY_EXIST(pilot) or ENTITY.DOES_ENTITY_EXIST(copilot) then
@@ -1763,6 +1866,7 @@ script.register_looped("Jet Manager", function(jetMgr)
       newFlight           = false
       can_land            = false
       flying              = false
+      disableArprtLst      = false
       spawned_jet         = {}
       spawned_pilot       = {}
       if showBailMsg then
@@ -1896,6 +2000,11 @@ script.register_looped("misc", function(misc)
       end
     end
   end
+  if not PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
+    onFoot = true
+  else
+    onFoot = false
+  end
   if spawned_bodyguards[1] ~= nil then
     if not dismissedGuards then
       local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
@@ -1941,6 +2050,46 @@ script.register_looped("misc", function(misc)
       end
       if not PED.IS_PED_GROUP_MEMBER(guard_3, myGroup) then
         PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
+      end
+      ----------------------auto-heal bodyguards-----------------------------
+      local bg1MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(guard_1)
+      local bg2MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(guard_2)
+      local bg3MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(guard_3)
+      local bg1CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_1)
+      local bg2CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_2)
+      local bg3CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_3)
+      if bg1CurrHp < bg1MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(guard_1) and not PED.IS_PED_FATALLY_INJURED(guard_1) then
+          if PED.IS_PED_IN_COVER(guard_1, false) then
+            bg1SleepTimer = 500
+          else
+            bg1SleepTimer = 1000
+          end
+          ENTITY.SET_ENTITY_HEALTH(guard_1, bg1CurrHp + 1, 0, 0)
+          misc:sleep(bg1SleepTimer)
+        end
+      end
+      if bg2CurrHp < bg2MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(guard_2) and not PED.IS_PED_FATALLY_INJURED(guard_2) then
+          if PED.IS_PED_IN_COVER(guard_2, false) then
+            bg2SleepTimer = 500
+          else
+            bg2SleepTimer = 1000
+          end
+          ENTITY.SET_ENTITY_HEALTH(guard_2, bg2CurrHp + 1, 0, 0)
+          misc:sleep(bg2SleepTimer)
+        end
+      end
+      if bg3CurrHp < bg3MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(guard_3) and not PED.IS_PED_FATALLY_INJURED(guard_3) then
+          if PED.IS_PED_IN_COVER(guard_3, false) then
+            bg3SleepTimer = 500
+          else
+            bg3SleepTimer = 1000
+          end
+          ENTITY.SET_ENTITY_HEALTH(guard_3, bg3CurrHp + 1, 0, 0)
+          misc:sleep(bg3SleepTimer)
+        end
       end
     end
   end
@@ -1994,22 +2143,37 @@ script.register_looped("misc", function(misc)
         local dist  = SYSTEM.VDIST(mPos.x, mPos.y, mPos.z, cPos.x, cPos.y, cPos.z)
         if dist > 100 then
           if INTERIOR.GET_INTERIOR_FROM_ENTITY(self.get_ped()) == 0 then
-            misc:sleep(1000)
-            ENTITY.SET_ENTITY_COORDS_NO_OFFSET(escortCar, mPos.x - (fwdX * 12), mPos.y - (fwdY * 12), mPos.z, true, false, false)
-            ENTITY.SET_ENTITY_HEADING(escortCar, mHdng)
-            if startFollowTask then
-              local escortSpd = ENTITY.GET_ENTITY_SPEED(escortCar)
-              local mySpd     = ENTITY.GET_ENTITY_SPEED(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()))
-              if mySpd > escortSpd then
-                VEHICLE.SET_VEHICLE_FORWARD_SPEED(escortCar, mySpd)
-                misc:sleep(2000)
-              end
-              if not sittingInEscortCar then
-                misc:sleep(10000) -- same time as the timeout for ENTER_VEHICLE task.
-                PED.SET_PED_INTO_VEHICLE(escort_1, escortCar, -1) -- if the driver fails to enter the vehicle after it teleports, force them into it.
+            if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) and not sittingInEscortCar then
+              if validModel then
+                misc:sleep(1000)
+                ENTITY.SET_ENTITY_COORDS_NO_OFFSET(escortCar, mPos.x - (fwdX * 12), mPos.y - (fwdY * 12), mPos.z, true, false, false)
+                ENTITY.SET_ENTITY_HEADING(escortCar, mHdng)
+                if startFollowTask then
+                  local escortSpd = ENTITY.GET_ENTITY_SPEED(escortCar)
+                  local mySpd     = ENTITY.GET_ENTITY_SPEED(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()))
+                  if mySpd > escortSpd then
+                    VEHICLE.SET_VEHICLE_FORWARD_SPEED(escortCar, mySpd)
+                    misc:sleep(2000)
+                  end
+                  if not sittingInEscortCar then
+                    misc:sleep(10000) -- same time as the timeout for ENTER_VEHICLE task.
+                    PED.SET_PED_INTO_VEHICLE(escort_1, escortCar, -1) -- if the driver fails to enter the vehicle after it teleports, force them into it.
+                  end
+                end
               end
             end
           end
+        end
+      end
+      --------------------keep track of the escort vehicle---------------------------
+      if ENTITY.DOES_ENTITY_EXIST(escortCar) then
+        local mPos  = ENTITY.GET_ENTITY_COORDS(self.get_ped(), false)
+        local cPos  = ENTITY.GET_ENTITY_COORDS(escortCar, false)
+        local dist  = SYSTEM.VDIST(mPos.x, mPos.y, mPos.z, cPos.x, cPos.y, cPos.z)
+        if dist > 100 then
+          escortCarAway = true
+        else
+          escortCarAway = false
         end
       end
       ------------prevent escorts from leaving group if the player dies---------------------
@@ -2036,6 +2200,46 @@ script.register_looped("misc", function(misc)
         misc:sleep(5000)
         PED.REMOVE_PED_FROM_GROUP(escort_3)
         PED.DELETE_PED(escort_3)
+      end
+      ----------------------auto-heal escorts-----------------------------------------------
+      local e1MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(escort_1)
+      local e2MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(escort_2)
+      local e3MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(escort_3)
+      local e1CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_1)
+      local e2CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_2)
+      local e3CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_3)
+      if e1CurrHp < e1MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(escort_1) and not PED.IS_PED_FATALLY_INJURED(escort_1) then
+          if PED.IS_PED_IN_COVER(escort_1, false) then
+            e1SleepTimer = 500
+          else
+            e1SleepTimer = 1000
+          end
+          ENTITY.SET_ENTITY_HEALTH(escort_1, e1CurrHp + 1, 0, 0)
+          misc:sleep(e1SleepTimer)
+        end
+      end
+      if e2CurrHp < e2MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(escort_2) and not PED.IS_PED_FATALLY_INJURED(escort_2) then
+          if PED.IS_PED_IN_COVER(escort_2, false) then
+            e2SleepTimer = 500
+          else
+            e2SleepTimer = 1000
+          end
+          ENTITY.SET_ENTITY_HEALTH(escort_2, e2CurrHp + 5, 0, 0)
+          misc:sleep(e2SleepTimer)
+        end
+      end
+      if e3CurrHp < e3MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(escort_3) and not PED.IS_PED_FATALLY_INJURED(escort_3) then
+          if PED.IS_PED_IN_COVER(escort_3, false) then
+            e3SleepTimer = 500
+          else
+            e3SleepTimer = 1000
+          end
+          ENTITY.SET_ENTITY_HEALTH(escort_3, e3CurrHp + 5, 0, 0)
+          misc:sleep(e3SleepTimer)
+        end
       end
       ----------------------reset everything if everyone is dead-----------------------------
       if not ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.DOES_ENTITY_EXIST(escort_2) and not ENTITY.DOES_ENTITY_EXIST(escort_3) then
