@@ -197,6 +197,7 @@ billionaire_services:add_imgui(function()
       if ImGui.Button("Call Your Private Jet") then
         jetDismissed = false
         script.run_in_fiber(function(privateJet)
+          local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
           while not STREAMING.HAS_MODEL_LOADED(jetModel) do
             STREAMING.REQUEST_MODEL(jetModel)
             coroutine.yield()
@@ -239,6 +240,7 @@ billionaire_services:add_imgui(function()
           PED.SET_PED_CONFIG_FLAG(copilot, 398, true)
           PED.SET_PED_CONFIG_FLAG(copilot, 402, true)
           PED.SET_PED_CONFIG_FLAG(copilot, 167, true)
+          PED.SET_PED_AS_GROUP_MEMBER(copilot, myGroup)
           PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(copilot, true)
           VEHICLE.SET_VEHICLE_ENGINE_ON(pJet, true, false, false)
           if NETWORK.NETWORK_IS_SESSION_STARTED() then
@@ -270,7 +272,6 @@ billionaire_services:add_imgui(function()
                 TASK.TASK_WANDER_STANDARD(pilot, 10.0, 10)
                 TASK.TASK_WANDER_STANDARD(copilot, 10.0, 10)
                 dismissJet:sleep(10000)
-                PED.REMOVE_PED_FROM_GROUP(pilot)
                 PED.REMOVE_PED_FROM_GROUP(copilot)
                 PED.DELETE_PED(pilot)
                 PED.DELETE_PED(copilot)
