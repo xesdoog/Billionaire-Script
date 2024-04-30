@@ -232,7 +232,6 @@ billionaire_services:add_imgui(function()
       if ImGui.Button("Call Your Private Jet") then
         jetDismissed = false
         script.run_in_fiber(function(privateJet)
-          -- local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
           local myGroup = PED.GET_PED_GROUP_INDEX(self.get_ped())
           if not PED.DOES_GROUP_EXIST(myGroup) then
             myGroup = PED.CREATE_GROUP(0)
@@ -640,7 +639,6 @@ billionaire_services:add_imgui(function()
           if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
             distMpl = 7
           end
-          -- local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
           local myGroup = PED.GET_PED_GROUP_INDEX(self.get_ped())
           if not PED.DOES_GROUP_EXIST(myGroup) then
             myGroup = PED.CREATE_GROUP(0)
@@ -1641,7 +1639,7 @@ billionaire_services:add_imgui(function()
   end
   --------------------debug section------------------------------------------------------------------------------
   ImGui.Spacing();ImGui.Dummy(270, 1);ImGui.SameLine()
-  ImGui.TextDisabled("v0.4.1")
+  ImGui.TextDisabled("v0.4.2")
   if ImGui.IsItemHovered() and ImGui.IsItemClicked(0) then
     dbgclc = dbgclc + 1
   end
@@ -2301,7 +2299,6 @@ script.register_looped("misc", function(misc)
   end
   if spawned_bodyguards[1] ~= nil then
     if not dismissedGuards then
-      -- local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
       local myGroup = PED.GET_PED_GROUP_INDEX(self.get_ped())
       if not PED.DOES_GROUP_EXIST(myGroup) then
         myGroup = PED.CREATE_GROUP(0)
@@ -2451,7 +2448,6 @@ script.register_looped("misc", function(misc)
   end
   if spawned_escorts[1] ~= nil then
     if not dismissed and not flying then
-      -- local myGroup = PLAYER.GET_PLAYER_GROUP(self.get_ped())
       local myGroup = PED.GET_PED_GROUP_INDEX(self.get_ped())
       if not PED.DOES_GROUP_EXIST(myGroup) then
         myGroup = PED.CREATE_GROUP(0)
