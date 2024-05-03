@@ -32,7 +32,6 @@ local mgIdx                     = 0
 local srIdx                     = 0
 local hvyIdx                    = 0
 local grIdx                     = 0
-local randomPed                 = 0
 local bg_unarmed                = false
 local es_unarmed                = false
 local wpnWindow                 = false
@@ -40,7 +39,7 @@ local nineEleven                = false
 local plyrWindow                = false
 local bg_attack                 = false
 local es_attack                 = false
-local dbgwindow                 = false
+local dbgWindow                 = false
 local bgAutoTp                  = true
 local esAutoTp                  = true
 local arprtLstTop               = true
@@ -75,7 +74,6 @@ local limoWp                    = false
 local limoCr                    = false
 local limoDismissed             = false
 local showLimoMsg               = false
-local bsDebug                   = false
 local taskInProgress            = false
 local startFollowTask           = false
 local followOnFoot              = false
@@ -199,6 +197,54 @@ end
 --   end
 --   miscIdx, used = ImGui.Combo("##miscWeapons", miscIdx, miscNames, #misc_weapons)
 -- end
+
+-- local function sleep(s)
+--   local ntime = os.clock() + s/10
+--   repeat
+--     coroutine.yield()
+--   until os.clock() > ntime
+-- end
+
+local function coloredText(text, color)
+  ImGui.PushStyleColor(ImGuiCol.Text, color[1]/255, color[2]/255, color[3]/255, color[4])
+  ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
+  ImGui.TextWrapped(text)
+  ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
+  ImGui.PopStyleColor(1)
+end
+
+local function helpmarker(colorFlag, text, color)
+  ImGui.SameLine()
+  ImGui.TextDisabled("(?)")
+  if ImGui.IsItemHovered() then
+    ImGui.SetNextWindowBgAlpha(0.8)
+    ImGui.BeginTooltip()
+    if colorFlag == true then
+      coloredText(text, color)
+    else
+      ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
+      ImGui.TextWrapped(text)
+      ImGui.PopTextWrapPos()
+    end
+      ImGui.EndTooltip()
+  end
+end
+
+local function widgetToolTip(colorFlag, text, color)
+  if ImGui.IsItemHovered() then
+    ImGui.SetNextWindowBgAlpha(0.8)
+    ImGui.BeginTooltip()
+    if colorFlag == true then
+      coloredText(text, color)
+    else
+      ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
+      ImGui.TextWrapped(text)
+      ImGui.PopTextWrapPos()
+    end
+      ImGui.EndTooltip()
+  end
+end
+
 local function updateAirports()
   filteredAirports = {}
   for _, airport in ipairs(airports) do
@@ -257,11 +303,14 @@ local function displayPlayerList()
   playerIndex, used = ImGui.Combo("##playerList", playerIndex, playerNames, #filteredPlayers)
 end
 local function pedConfig(ped)
-  script.run_in_fiber(function()
+    PED.SET_PED_CONFIG_FLAG(ped, 2, true)
     PED.SET_PED_CONFIG_FLAG(ped, 43, true)
-    PED.SET_PED_CONFIG_FLAG(ped, 179, true)
+    PED.SET_PED_CONFIG_FLAG(ped, 48, false)
+    PED.SET_PED_CONFIG_FLAG(ped, 140, false)
     PED.SET_PED_CONFIG_FLAG(ped, 141, true)
     PED.SET_PED_CONFIG_FLAG(ped, 144, true)
+    PED.SET_PED_CONFIG_FLAG(ped, 177, true)
+    PED.SET_PED_CONFIG_FLAG(ped, 179, true)
     PED.SET_PED_CONFIG_FLAG(ped, 249, true)
     PED.SET_PED_CONFIG_FLAG(ped, 294, true)
     PED.SET_PED_CONFIG_FLAG(ped, 311, true)
@@ -302,7 +351,6 @@ local function pedConfig(ped)
     PED.SET_PED_CAN_BE_TARGETED_WHEN_INJURED(ped, false)
     WEAPON.SET_PED_DROPS_WEAPONS_WHEN_DEAD(ped, false)
     PED.SET_PED_SUFFERS_CRITICAL_HITS(ped, false)
-  end)
 end
 local function list_iter(t)
   local i = 0
@@ -315,7 +363,7 @@ local function list_iter(t)
   end
 end
 local function nearestPed(closeTo)
-  script.run_in_fiber(function(getRandomPed)
+  script.run_in_fiber(function()
     local gtaPeds = entities.get_all_peds_as_handles()
     local myGroup = PED.GET_PED_GROUP_INDEX(self.get_ped())
     for _, ped in ipairs(gtaPeds) do
@@ -325,7 +373,7 @@ local function nearestPed(closeTo)
             local thisPos       = ENTITY.GET_ENTITY_COORDS(closeTo, true)
             local randomPedPos  = ENTITY.GET_ENTITY_COORDS(ped, true)
             local distCalc      = SYSTEM.VDIST(thisPos.x, thisPos.y, thisPos.z, randomPedPos.x, randomPedPos.y, randomPedPos.z)
-            if distCalc < 200 then
+            if distCalc < 50 then
               if not ENTITY.IS_ENTITY_DEAD(ped) then
                 randomPed = ped
               end
@@ -380,6 +428,8 @@ billionaire_services:add_imgui(function()
           end
           PED.SET_PED_AS_GROUP_LEADER(self.get_ped(), myGroup)
           PED.SET_GROUP_SEPARATION_RANGE(myGroup, 16960)
+          PED.SET_GROUP_FORMATION(myGroup, 2)
+          PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           while not STREAMING.HAS_MODEL_LOADED(jetModel) do
             STREAMING.REQUEST_MODEL(jetModel)
             coroutine.yield()
@@ -990,9 +1040,8 @@ billionaire_services:add_imgui(function()
     local forwardX    = ENTITY.GET_ENTITY_FORWARD_X(self.get_ped())
     local forwardY    = ENTITY.GET_ENTITY_FORWARD_Y(self.get_ped())
     local myHeading   = ENTITY.GET_ENTITY_HEADING(self.get_ped())
-    invincile, used   = ImGui.Checkbox("Spawn in God Mode", invincile, true)
     if spawned_bodyguards[1] == nil then
-      if ImGui.Button("Spawn As Bodyguards") then
+      if ImGui.Button("Spawn Bodyguards") then
         if flying then
           gui.show_error("Private Security", "Land your private jet first!")
           return
@@ -1008,6 +1057,8 @@ billionaire_services:add_imgui(function()
           end
           PED.SET_PED_AS_GROUP_LEADER(self.get_ped(), myGroup)
           PED.SET_GROUP_SEPARATION_RANGE(myGroup, 16960)
+          PED.SET_GROUP_FORMATION(myGroup, 2)
+          PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.a) do
             STREAMING.REQUEST_MODEL(bGuardData.modelHash.a)
             coroutine.yield()
@@ -1015,6 +1066,8 @@ billionaire_services:add_imgui(function()
           guard_1 = PED.CREATE_PED(bGuardData.pedType, bGuardData.modelHash.a, 0.0, 0.0, 0.0, 0.0, true, false)
           ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_1, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
           ENTITY.SET_ENTITY_HEADING(guard_1, myHeading - 180)
+          ENTITY.SET_ENTITY_MAX_HEALTH(guard_1, 1000)
+          ENTITY.SET_ENTITY_HEALTH(guard_1, 1000, 0, 0)
           PED.SET_PED_AS_GROUP_MEMBER(guard_1, myGroup)
           PED.SET_PED_NEVER_LEAVES_GROUP(guard_1, true)
           PED.SET_PED_ARMOUR(guard_1, 100)
@@ -1024,8 +1077,6 @@ billionaire_services:add_imgui(function()
             WEAPON.GIVE_WEAPON_TO_PED(guard_1, bGuardData.weaponHash.sec, 9999, false, true)
             WEAPON.SET_PED_INFINITE_AMMO(guard_1, true, bGuardData.weaponHash.sec)
           end
-          PED.SET_GROUP_FORMATION(myGroup, 2)
-          PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           table.insert(spawned_bodyguards, guard_1)
           pedConfig(guard_1)
           guard_1Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_1)
@@ -1033,10 +1084,6 @@ billionaire_services:add_imgui(function()
           HUD.SET_BLIP_SCALE(guard_1Blip, 0.8)
           HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_1Blip, true)
           table.insert(guardBlips, guard_1Blip)
-          if invincile then
-            ENTITY.SET_ENTITY_INVINCIBLE(guard_1, true)
-            PED.SET_PED_CAN_RAGDOLL(guard_1, false)
-          end
           while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.b) do
             STREAMING.REQUEST_MODEL(bGuardData.modelHash.b)
             coroutine.yield()
@@ -1044,6 +1091,8 @@ billionaire_services:add_imgui(function()
           guard_2 = PED.CREATE_PED(bGuardData.pedType, bGuardData.modelHash.b, 0.0, 0.0, 0.0, 0.0, true, false)
           ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_2, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
           ENTITY.SET_ENTITY_HEADING(guard_2, myHeading - 180)
+          ENTITY.SET_ENTITY_MAX_HEALTH(guard_2, 1000)
+          ENTITY.SET_ENTITY_HEALTH(guard_2, 1000, 0, 0)
           PED.SET_PED_AS_GROUP_MEMBER(guard_2, myGroup)
           PED.SET_PED_NEVER_LEAVES_GROUP(guard_2, true)
           PED.SET_PED_ARMOUR(guard_2, 100)
@@ -1053,8 +1102,6 @@ billionaire_services:add_imgui(function()
             WEAPON.GIVE_WEAPON_TO_PED(guard_2, bGuardData.weaponHash.sec, 9999, false, true)
             WEAPON.SET_PED_INFINITE_AMMO(guard_2, true, bGuardData.weaponHash.sec)
           end
-          PED.SET_GROUP_FORMATION(myGroup, 2)
-          PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           table.insert(spawned_bodyguards, guard_2)
           pedConfig(guard_2)
           guard_2Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_2)
@@ -1062,10 +1109,6 @@ billionaire_services:add_imgui(function()
           HUD.SET_BLIP_SCALE(guard_2Blip, 0.8)
           HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_2Blip, true)
           table.insert(guardBlips, guard_2Blip)
-          if invincile then
-            ENTITY.SET_ENTITY_INVINCIBLE(guard_2, true)
-            PED.SET_PED_CAN_RAGDOLL(guard_2, false)
-          end
           while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.c) do
             STREAMING.REQUEST_MODEL(bGuardData.modelHash.c)
             coroutine.yield()
@@ -1073,6 +1116,8 @@ billionaire_services:add_imgui(function()
           guard_3 = PED.CREATE_PED(bGuardData.pedType, bGuardData.modelHash.c, 0.0, 0.0, 0.0, 0.0, true, false)
           ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_3, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
           ENTITY.SET_ENTITY_HEADING(guard_3, myHeading - 180)
+          ENTITY.SET_ENTITY_MAX_HEALTH(guard_3, 1000)
+          ENTITY.SET_ENTITY_HEALTH(guard_3, 1000, 0, 0)
           PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
           PED.SET_PED_NEVER_LEAVES_GROUP(guard_3, true)
           PED.SET_PED_ARMOUR(guard_3, 100)
@@ -1082,8 +1127,6 @@ billionaire_services:add_imgui(function()
             WEAPON.GIVE_WEAPON_TO_PED(guard_3, bGuardData.weaponHash.sec, 9999, false, true)
             WEAPON.SET_PED_INFINITE_AMMO(guard_3, true, bGuardData.weaponHash.sec)
           end
-          PED.SET_GROUP_FORMATION(myGroup, 2)
-          PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
           table.insert(spawned_bodyguards, guard_3)
           pedConfig(guard_3)
           guard_3Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_3)
@@ -1091,10 +1134,6 @@ billionaire_services:add_imgui(function()
           HUD.SET_BLIP_SCALE(guard_3Blip, 0.8)
           HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_3Blip, true)
           table.insert(guardBlips, guard_3Blip)
-          if invincile then
-            ENTITY.SET_ENTITY_INVINCIBLE(guard_3, true)
-            PED.SET_PED_CAN_RAGDOLL(guard_3, false)
-          end
           dismissedGuards = false
           bg_unarmed      = false
         end)
@@ -1141,7 +1180,7 @@ billionaire_services:add_imgui(function()
     end
     ImGui.SameLine()
     if spawned_escorts[1] == nil then
-      if ImGui.Button("Spawn As Escorts") then
+      if ImGui.Button("Spawn Escorts") then
         if flying then
           gui.show_error("Private Security", "Land your private jet first!")
           return
@@ -1158,6 +1197,9 @@ billionaire_services:add_imgui(function()
               myGroup = PED.CREATE_GROUP(0)
             end
             PED.SET_PED_AS_GROUP_LEADER(self.get_ped(), myGroup)
+            PED.SET_GROUP_SEPARATION_RANGE(myGroup, 16960)
+            PED.SET_GROUP_FORMATION(myGroup, 2)
+            PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
             while not STREAMING.HAS_MODEL_LOADED(bGuardData.vehicle) do
               STREAMING.REQUEST_MODEL(bGuardData.vehicle)
               escort:yield()
@@ -1193,6 +1235,8 @@ billionaire_services:add_imgui(function()
             PED.SET_PED_CAN_TELEPORT_TO_GROUP_LEADER(escort_1, myGroup, true)
             PED.SET_PED_CAN_EVASIVE_DIVE(escort_1, true)
             PED.SET_DRIVER_AGGRESSIVENESS(escort_1, 1.0)
+            ENTITY.SET_ENTITY_MAX_HEALTH(escort_1, 1000)
+            ENTITY.SET_ENTITY_HEALTH(escort_1, 1000, 0, 0)
             PED.SET_PED_ARMOUR(escort_1, 100)
             WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash.main, 9999, false, true)
             WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash.main)
@@ -1200,8 +1244,6 @@ billionaire_services:add_imgui(function()
               WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash.sec, 9999, false, true)
               WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash.sec)
             end
-            PED.SET_GROUP_FORMATION(myGroup, 2)
-            PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
             PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_1, escortCar, -1, 0, 0)
             PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
             PED.SET_PED_CONFIG_FLAG(escort_1, 167, true)
@@ -1213,10 +1255,6 @@ billionaire_services:add_imgui(function()
             HUD.SET_BLIP_AS_FRIENDLY(escort_1Blip, true)
             HUD.SET_BLIP_SCALE(escort_1Blip, 0.8)
             HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_1Blip, true)
-            if invincile then
-              ENTITY.SET_ENTITY_INVINCIBLE(escort_1, true)
-              PED.SET_PED_CAN_RAGDOLL(escort_1, false)
-            end
             while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.b) do
               STREAMING.REQUEST_MODEL(bGuardData.modelHash.b)
               coroutine.yield()
@@ -1225,14 +1263,14 @@ billionaire_services:add_imgui(function()
             PED.SET_PED_AS_GROUP_MEMBER(escort_2, myGroup)
             PED.SET_PED_NEVER_LEAVES_GROUP(escort_2, true)
             PED.SET_PED_ARMOUR(escort_2, 100)
+            ENTITY.SET_ENTITY_MAX_HEALTH(escort_2, 1000)
+            ENTITY.SET_ENTITY_HEALTH(escort_2, 1000, 0, 0)
             WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash.main, 9999, false, true)
             WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash.main)
             if bGuardData.weaponHash.sec ~= 0 then
               WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash.sec, 9999, false, true)
               WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash.sec)
             end
-            PED.SET_GROUP_FORMATION(myGroup, 2)
-            PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
             PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_2, escortCar, 0, 0, 0)
             PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
             PED.SET_PED_CONFIG_FLAG(escort_2, 167, true)
@@ -1244,10 +1282,6 @@ billionaire_services:add_imgui(function()
             HUD.SET_BLIP_AS_FRIENDLY(escort_2Blip, true)
             HUD.SET_BLIP_SCALE(escort_2Blip, 0.8)
             HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_2Blip, true)
-            if invincile then
-              ENTITY.SET_ENTITY_INVINCIBLE(escort_2, true)
-              PED.SET_PED_CAN_RAGDOLL(escort_2, false)
-            end
             while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.c) do
               STREAMING.REQUEST_MODEL(bGuardData.modelHash.c)
               coroutine.yield()
@@ -1256,14 +1290,14 @@ billionaire_services:add_imgui(function()
             PED.SET_PED_AS_GROUP_MEMBER(escort_3, myGroup)
             PED.SET_PED_NEVER_LEAVES_GROUP(escort_3, true)
             PED.SET_PED_ARMOUR(escort_3, 100)
+            ENTITY.SET_ENTITY_MAX_HEALTH(escort_1, 1000)
+            ENTITY.SET_ENTITY_HEALTH(escort_1, 1000, 0, 0)
             WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash.main, 9999, false, true)
             WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash.main)
             if bGuardData.weaponHash.sec ~= 0 then
               WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash.sec, 9999, false, true)
               WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash.sec)
             end
-            PED.SET_GROUP_FORMATION(myGroup, 2)
-            PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
             PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_3, escortCar, 1, 0, 0)
             PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
             PED.SET_PED_CONFIG_FLAG(escort_3, 167, true)
@@ -1275,10 +1309,6 @@ billionaire_services:add_imgui(function()
             HUD.SET_BLIP_AS_FRIENDLY(escort_3Blip, true)
             HUD.SET_BLIP_SCALE(escort_3Blip, 0.8)
             HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_3Blip, true)
-            if invincile then
-              ENTITY.SET_ENTITY_INVINCIBLE(escort_3, true)
-              PED.SET_PED_CAN_RAGDOLL(escort_3, false)
-            end
             VEHICLE.SET_VEHICLE_ENGINE_ON(escortCar, true, false, false)
             gui.show_message("Private Security", "Your escort vehicle is waiting behind you.")
             escort:sleep(1000)
@@ -1386,13 +1416,38 @@ billionaire_services:add_imgui(function()
         gui.show_message("Private Security", "Security escort service has been dismissed. Please wait for your escorts to leave.")
       end
     end
-    allowInside, used = ImGui.Checkbox("Allow Teleport Inside", allowInside, true)
-    if ImGui.IsItemHovered() then
-      ImGui.BeginTooltip()
-      ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
-      ImGui.TextWrapped("If you travel too far from your bodyguards or escorts, they will automatically teleport to your location but only if you're outside. This option allows them to teleport inside too.")
-      ImGui.PopTextWrapPos()
-      ImGui.EndTooltip()
+    if spawned_bodyguards[1] ~= nil or spawned_escorts[1] ~= nil then
+      invincile, used = ImGui.Checkbox("God Mode", invincile, true)
+      widgetToolTip(false, "Turn God Mode on/off for bodyguards and escorts. When God Mode is on, ragdoll will be disabled for them.")
+      if spawned_bodyguards[1] ~= nil then
+        for _, g in ipairs(spawned_bodyguards) do
+          script.run_in_fiber(function()
+            if invincile then
+              ENTITY.SET_ENTITY_INVINCIBLE(g, true)
+              PED.SET_PED_CAN_RAGDOLL(g, false)
+            else
+              ENTITY.SET_ENTITY_INVINCIBLE(g, false)
+              PED.SET_PED_CAN_RAGDOLL(g, true)
+            end
+          end)
+        end
+      end
+      if spawned_escorts[1] ~= nil then
+        for _, e in ipairs(spawned_escorts) do
+          script.run_in_fiber(function()
+            if invincile then
+              ENTITY.SET_ENTITY_INVINCIBLE(e, true)
+              PED.SET_PED_CAN_RAGDOLL(e, false)
+            else
+              ENTITY.SET_ENTITY_INVINCIBLE(e, false)
+              PED.SET_PED_CAN_RAGDOLL(e, true)
+            end
+          end)
+        end
+      end
+      ImGui.SameLine()
+      allowInside, used = ImGui.Checkbox("Allow Teleport Inside", allowInside, true)
+      widgetToolTip(false, "If you travel too far from your bodyguards or escorts, they will automatically teleport to your location but only if you're outside. This option allows them to teleport inside too.")
     end
     if spawned_escorts[1] ~= nil or spawned_bodyguards[1] ~= nil then
       if not wpnWindow then
@@ -1402,13 +1457,7 @@ billionaire_services:add_imgui(function()
           end
           wpnWindow = true
         end
-        if ImGui.IsItemHovered() then
-          ImGui.BeginTooltip()
-          ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
-          ImGui.TextWrapped("Here you can check and instantly refill your bodyguards and escorts health as well as add/remove their weapons.")
-          ImGui.PopTextWrapPos()
-          ImGui.EndTooltip()
-        end
+        widgetToolTip(false, "Here you can check and instantly refill your bodyguards and escorts health as well as add/remove their weapons.")
       end
       if wpnWindow and not plyrWindow then
         ImGui.SetNextWindowPos(860, 140)
@@ -1458,176 +1507,152 @@ billionaire_services:add_imgui(function()
           end
           if ENTITY.DOES_ENTITY_EXIST(guard_1) then
             ImGui.Text("Bodyguard 1:")
-            ImGui.BulletText("Health:   ");ImGui.SameLine();ImGui.ProgressBar((g1Hp/200), 100, 20)
-            if g1Hp < g1MaxHp then
+            ImGui.BulletText("Health:  ");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((g1Hp/1000), 100, 20)
+            if math.ceil(g1Hp) < g1MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(guard_1) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Health") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_1, g1MaxHp, 0, 0)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
-            ImGui.BulletText("Armour: ");ImGui.SameLine();ImGui.ProgressBar((g1Ar/100), 100, 20)
-            if g1Ar < g1MaxAr then
+            ImGui.BulletText("Armour:");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((g1Ar/100), 100, 20)
+            if math.ceil(g1Ar) < g1MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(guard_1) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Armour") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_1, g1MaxAr)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
           end
           if ENTITY.DOES_ENTITY_EXIST(guard_2) then
             ImGui.Text("Bodyguard 2:")
-            ImGui.BulletText("Health:   ");ImGui.SameLine();ImGui.ProgressBar((g2Hp/200), 100, 20)
-            if g2Hp < g2MaxHp then
+            ImGui.BulletText("Health:  ");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((g2Hp/1000), 100, 20)
+            if math.ceil(g2Hp) < g2MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(guard_2) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Health") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_2, g2MaxHp, 0, 0)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
-            ImGui.BulletText("Armour: ");ImGui.SameLine();ImGui.ProgressBar((g2Ar/100), 100, 20)
-            if g2Ar < g2MaxAr then
+            ImGui.BulletText("Armour:");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((g2Ar/100), 100, 20)
+            if math.ceil(g2Ar) < g2MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(guard_2) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Armour") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_2, g1MaxAr)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
           end
           if ENTITY.DOES_ENTITY_EXIST(guard_3) then
             ImGui.Text("Bodyguard 3:")
-            ImGui.BulletText("Health:   ");ImGui.SameLine();ImGui.ProgressBar((g3Hp/200), 100, 20)
-            if g3Hp < g3MaxHp then
+            ImGui.BulletText("Health:  ");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((g3Hp/1000), 100, 20)
+            if math.ceil(g3Hp) < g3MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(guard_3) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Health") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_3, g3MaxHp, 0, 0)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
-            ImGui.BulletText("Armour: ");ImGui.SameLine();ImGui.ProgressBar((g3Ar/100), 100, 20)
-            if g3Ar < g3MaxAr then
+            ImGui.BulletText("Armour:");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((g3Ar/100), 100, 20)
+            if math.ceil(g3Ar) < g3MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(guard_3) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Armour") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_3, g3MaxAr)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
           end
           if ENTITY.DOES_ENTITY_EXIST(escort_1) then
             ImGui.Text("Escort 1 (driver):")
-            ImGui.BulletText("Health:   ");ImGui.SameLine();ImGui.ProgressBar((e1Hp/200), 100, 20)
-            if e1Hp < e1MaxHp then
+            ImGui.BulletText("Health:  ");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((e1Hp/1000), 100, 20)
+            if math.ceil(e1Hp) < e1MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(escort_1) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Health") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_1, e1MaxHp, 0, 0)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
-            ImGui.BulletText("Armour: ");ImGui.SameLine();ImGui.ProgressBar((e1Ar/100), 100, 20)
-            if e1Ar < e1MaxAr then
+            ImGui.BulletText("Armour:");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((e1Ar/100), 100, 20)
+            if math.ceil(e1Ar) < e1MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(escort_1) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Armour") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(escort_1, e1MaxAr)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
           end
           if ENTITY.DOES_ENTITY_EXIST(escort_2) then
             ImGui.Text("Escort 2:")
-            ImGui.BulletText("Health:   ");ImGui.SameLine();ImGui.ProgressBar((e2Hp/200), 100, 20)
-            if e2Hp < e2MaxHp then
+            ImGui.BulletText("Health:  ");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((e2Hp/1000), 100, 20)
+            if math.ceil(e2Hp) < e2MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(escort_2) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Health") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_2, e2MaxHp, 0, 0)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
-            ImGui.BulletText("Armour: ");ImGui.SameLine();ImGui.ProgressBar((e2Ar/100), 100, 20)
-            if e2Ar < e2MaxAr then
+            ImGui.BulletText("Armour:");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((e2Ar/100), 100, 20)
+            if math.ceil(e2Ar) < e2MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(escort_2) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Armour") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
-                    PED.SET_PED_ARMOUR(escort_2, e1MaxAr)
+                    PED.SET_PED_ARMOUR(escort_2, e2MaxAr)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
           end
           if ENTITY.DOES_ENTITY_EXIST(escort_3) then
             ImGui.Text("Escort 3:")
-            ImGui.BulletText("Health:   ");ImGui.SameLine();ImGui.ProgressBar((e3Hp/200), 100, 20)
-            if e3Hp < e3MaxHp then
+            ImGui.BulletText("Health:  ");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((e3Hp/1000), 100, 20)
+            if math.ceil(e3Hp) < e3MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(escort_3) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Health") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_3, e3MaxHp, 0, 0)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
-            ImGui.BulletText("Armour: ");ImGui.SameLine();ImGui.ProgressBar((e3Ar/100), 100, 20)
-            if e3Ar < e3MaxAr then
+            ImGui.BulletText("Armour:");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.ProgressBar((e3Ar/100), 100, 20)
+            if math.ceil(e3Ar) < e3MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(escort_3) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill Armour") then
+                if ImGui.SmallButton("Refill") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(escort_3, e3MaxAr)
                   end)
                 end
               end
-            else
-              ImGui.SameLine();ImGui.Dummy(40, 1)
             end
           end
           ImGui.EndTabItem()
@@ -2028,13 +2053,7 @@ billionaire_services:add_imgui(function()
           end
           plyrWindow = true
         end
-        if ImGui.IsItemHovered() then
-          ImGui.BeginTooltip()
-          ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
-          ImGui.TextWrapped("[Work In Progress] May cause issues or not perform as intended.")
-          ImGui.PopTextWrapPos()
-          ImGui.EndTooltip()
-        end
+        widgetToolTip(false, "[Work In Progress] May cause issues or not perform as intended.")
         if plyrWindow and not wpnWindow then
           ImGui.SetNextWindowPos(920, 280)
           ImGui.Begin("Attack a Player", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize)
@@ -2090,7 +2109,6 @@ billionaire_services:add_imgui(function()
                 targetPlayer    = selectedPlayer
                 es_attack       = true
                 esAutoTp        = false
-                startFollowTask = false
               end
             end
             if es_attack then
@@ -2102,8 +2120,7 @@ billionaire_services:add_imgui(function()
                   TASK.CLEAR_PED_TASKS(escort_2)
                   TASK.CLEAR_PED_TASKS(escort_3)
                   TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
-                  startFollowTask = true
-                  esAutoTp        = true
+                  esAutoTp = true
                   gui.show_message("Private Security", "Operation Fuck'Em Up has been canceled. Escorts are falling back.")
                 end)
               end
@@ -2116,15 +2133,9 @@ billionaire_services:add_imgui(function()
           ImGui.SameLine()
         end
         if ImGui.Button("Attack a Player") then
-          gui.show_error("Private Security", "You can't use this feature in Single Player.")
+          gui.show_error("Private Security", "You can not use this feature in Single Player.")
         end
-        if ImGui.IsItemHovered() then
-          ImGui.BeginTooltip()
-          ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
-          ImGui.TextWrapped("[Work In Progress] May cause issues or not perform as intended.")
-          ImGui.PopTextWrapPos()
-          ImGui.EndTooltip()
-        end
+        widgetToolTip(false, "[Work In Progress] May cause issues or not perform as intended.")
       end
     end
     if spawned_escorts[1] ~= nil then
@@ -2376,12 +2387,8 @@ billionaire_services:add_imgui(function()
                   end)
                 end
             end
-            ImGui.Text("Start Doing Donuts");ImGui.SameLine();ImGui.TextDisabled("(?)")
-            if ImGui.IsItemHovered() then
-              ImGui.BeginTooltip()
-              ImGui.Text("You can use the \"Change Direction\" button\nto turn donuts into mad drifts.")
-              ImGui.EndTooltip()
-            end
+            ImGui.Text("Start Doing Donuts")
+            helpmarker(false, "You can use the \"Change Direction\" button to turn donuts into MAAD drifts.")
             if ImGui.Button("Do Some Donuts") then
               script.run_in_fiber(function(donuts)
                 if not VEHICLE.IS_VEHICLE_ON_ALL_WHEELS(escortCar) then
@@ -2492,40 +2499,39 @@ billionaire_services:add_imgui(function()
     dbgclc = dbgclc + 1
   end
   if dbgclc == 5 then
-    bsDebug = true
+    dbgWindow = true
   elseif dbgclc > 5 then
-    bsDebug = false
+    dbgWindow = false
     dbgclc  = 0
   end
-  if bsDebug then
-      dbgwindow = true
-  else
-    dbgwindow = false
-  end
-  if dbgwindow then
+  if dbgWindow then
     ImGui.SetNextWindowSizeConstraints(450, 100, 600, 800)
     ImGui.Begin("##bsDebug", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar)
     ImGui.Text("Billionaire Services Debug");ImGui.SameLine(380)
     if ImGui.Button("Close") then
-      dbgwindow = false
-      bsDebug   = false
+      dbgWindow = false
       dbgclc    = 0
     end
     ImGui.Spacing()
     script.run_in_fiber(function()
-      myGroup              = PLAYER.GET_PLAYER_GROUP(self.get_ped())
-      activestatus         = NETWORK.NETWORK_IS_PLAYER_ACTIVE(targetPlayer)
       dbgPos               = ENTITY.GET_ENTITY_COORDS(self.get_ped(), false)
       dbgHeading           = ENTITY.GET_ENTITY_HEADING(self.get_ped())
       local streetHash     = PATHFIND.GET_STREET_NAME_AT_COORD(dbgPos.x, dbgPos.y, dbgPos.z)
       dbgstreetName        = HUD.GET_STREET_NAME_FROM_HASH_KEY(streetHash)
+      -- if string.find(string.lower(streetName), "panorama") then retVal = true end
       if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
+        dbgVeh          = PED.GET_VEHICLE_PED_IS_IN(self.get_ped())
         dbgRadio        = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(AUDIO.GET_PLAYER_RADIO_STATION_NAME())
         dbgTrack        = AUDIO.GET_CURRENT_TRACK_SOUND_NAME(AUDIO.GET_PLAYER_RADIO_STATION_NAME())
         dbgtrackName    = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(dbgTrack)
-        dbgSeats        = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(PED.GET_VEHICLE_PED_IS_IN(self.get_ped()))
-        dbgPlyrSeat     = PED.GET_SEAT_PED_IS_TRYING_TO_ENTER(self.get_ped()) --fym -3?
-        -- if string.find(string.lower(streetName), "panorama") then retVal = true end
+        dbgSeats        = VEHICLE.GET_VEHICLE_MAX_NUMBER_OF_PASSENGERS(dbgVeh)
+        dbgMaxSeats     = VEHICLE.GET_VEHICLE_MODEL_NUMBER_OF_SEATS(ENTITY.GET_ENTITY_MODEL(dbgVeh))
+        for i = -1, dbgMaxSeats do
+          local pedInSeat = VEHICLE.GET_PED_IN_VEHICLE_SEAT(dbgVeh, i, false)
+          if pedInSeat == self.get_ped() then
+            dbgPlyrSeat = i
+          end
+        end
       end
       if ENTITY.DOES_ENTITY_EXIST(guard_1) then
         dbg1Hp = ENTITY.GET_ENTITY_HEALTH(guard_1)
@@ -2547,25 +2553,23 @@ billionaire_services:add_imgui(function()
       end
     end)
     ImGui.Text("Player:")
-    ImGui.BulletText("Player Group:");ImGui.SameLine();ImGui.Dummy(30, 1);ImGui.SameLine();ImGui.Text(tostring(myGroup))
-    ImGui.BulletText("Player Active:");ImGui.SameLine();ImGui.Dummy(30, 1);ImGui.SameLine();ImGui.Text(tostring(activestatus))
-    ImGui.BulletText("Player Position:");ImGui.SameLine();ImGui.Dummy(30, 1);ImGui.SameLine();ImGui.Text(tostring(dbgPos))
+    ImGui.BulletText("Player Position:");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.Text(tostring(dbgPos))
     if ImGui.IsItemHovered() and ImGui.IsItemClicked(0) then
       log.debug(tostring(dbgPos))
     end
-    ImGui.BulletText("Heading:");ImGui.SameLine();ImGui.Dummy(80, 1);ImGui.SameLine();ImGui.Text(tostring(dbgHeading))
+    ImGui.BulletText("Heading:");ImGui.SameLine();ImGui.Dummy(70, 1);ImGui.SameLine();ImGui.Text(tostring(dbgHeading))
     if ImGui.IsItemHovered() and ImGui.IsItemClicked(0) then
       log.debug(tostring(dbgHeading))
     end
-    ImGui.BulletText("Street Name:");ImGui.SameLine();ImGui.Dummy(50, 1);ImGui.SameLine();ImGui.Text(tostring(dbgstreetName))
+    ImGui.BulletText("Street Name:");ImGui.SameLine();ImGui.Dummy(40, 1);ImGui.SameLine();ImGui.Text(tostring(dbgstreetName))
     if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
       ImGui.Spacing();ImGui.Text("Vehicle:")
-      ImGui.BulletText("Radio Station:");ImGui.SameLine();ImGui.Dummy(45, 1);ImGui.SameLine();ImGui.Text(tostring(dbgRadio))
-      ImGui.BulletText("Song Name:");ImGui.SameLine();ImGui.Dummy(55, 1);ImGui.SameLine();ImGui.Text(tostring(dbgtrackName))
-      ImGui.BulletText("Max Passengers:");ImGui.SameLine();ImGui.Dummy(20, 1);ImGui.SameLine();ImGui.Text(tostring(dbgSeats))
-      ImGui.BulletText("Player Seat: ");ImGui.SameLine();ImGui.Dummy(50, 1);ImGui.SameLine();ImGui.Text(tostring(dbgPlyrSeat))
+      ImGui.BulletText("Radio Station:");ImGui.SameLine();ImGui.Dummy(35, 1);ImGui.SameLine();ImGui.Text(tostring(dbgRadio))
+      ImGui.BulletText("Song Name:");ImGui.SameLine();ImGui.Dummy(45, 1);ImGui.SameLine();ImGui.Text(tostring(dbgtrackName))
+      ImGui.BulletText("Max Passengers:");ImGui.SameLine();ImGui.Dummy(10, 1);ImGui.SameLine();ImGui.Text(tostring(dbgSeats))
+      ImGui.BulletText("Player Seat: ");ImGui.SameLine();ImGui.Dummy(40, 1);ImGui.SameLine();ImGui.Text(tostring(dbgPlyrSeat))
     end
-    if spawned_bodyguards[1] ~= nil or spawned_escorts[1] ~= nil then
+    if spawned_bodyguards[1] ~= nil then
       ImGui.Spacing();ImGui.Text("Bodyguards/Escorts:")
       if ENTITY.DOES_ENTITY_EXIST(guard_1) then
         ImGui.BulletText("BG1 Health:");ImGui.SameLine();ImGui.Dummy(65, 1);ImGui.SameLine();ImGui.Text(tostring(dbg1Hp))
@@ -2576,6 +2580,8 @@ billionaire_services:add_imgui(function()
       if ENTITY.DOES_ENTITY_EXIST(guard_3) then
         ImGui.BulletText("BG3 Health:");ImGui.SameLine();ImGui.Dummy(60, 1);ImGui.SameLine();ImGui.Text(tostring(dbg3Hp))
       end
+    end
+    if spawned_escorts[1] ~= nil then
       if ENTITY.DOES_ENTITY_EXIST(escort_1) then
         ImGui.BulletText("ES1 Health:");ImGui.SameLine();ImGui.Dummy(65, 1);ImGui.SameLine();ImGui.Text(tostring(dbg4Hp))
       end
@@ -2586,17 +2592,9 @@ billionaire_services:add_imgui(function()
         ImGui.BulletText("ES3 Health:");ImGui.SameLine();ImGui.Dummy(60, 1);ImGui.SameLine();ImGui.Text(tostring(dbg6Hp))
       end
     end
-      -- ImGui.Text("Track Name: "..tostring(trackName))
     if PED.IS_PED_SITTING_IN_ANY_VEHICLE(self.get_ped()) then
       ImGui.Spacing();ImGui.Separator();ImGui.TextWrapped("Make your vehicle's radio sound louder from the outside.")
-      if ImGui.IsItemHovered() then
-        ImGui.SetNextWindowSize(310, 130)
-        ImGui.BeginTooltip()
-        ImGui.PushTextWrapPos(ImGui.GetFontSize() * 15)
-        ImGui.TextWrapped("Sit inside your vehicle, turn on the radio, press the on button below then exit your vehicle. If the engine gets turned off after you exit, turn it back on from the interaction menu.")
-        ImGui.PushTextWrapPos()
-        ImGui.EndTooltip()
-      end
+      widgetToolTip(false, "Sit inside your vehicle, turn on the radio, press the on button below then exit your vehicle. If the engine gets turned off after you exit, turn it back on from the interaction menu.")
       if ImGui.Button("Loud Radio On") then
         script.run_in_fiber(function()
           AUDIO.SET_VEHICLE_RADIO_LOUD(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), true)
@@ -2609,23 +2607,11 @@ billionaire_services:add_imgui(function()
         end)
       end
     end
-    -- has_pistol = false
-    -- for _, g in ipairs(spawned_bodyguards) do
-      -- for w = 1, #handguns do
-      --   log.debug(tostring(w))
-      --   if WEAPON.HAS_PED_GOT_WEAPON(g, w, false) then
-      --     log.debug(tostring(has_pistol))
-      --     has_pistol = true
-      --   else
-      --     has_pistol = false
-      --   end
-      -- end
-    -- end
     ImGui.End()
   end
   -------------------------------------------------------------------------------------------------------------
 end)
-script.register_looped("blipManager", function(bilpMgr)
+script.register_looped("blipManager", function()
   if HUD.DOES_BLIP_EXIST(jetBlip) then
     if PED.IS_PED_SITTING_IN_VEHICLE(self.get_ped(), pJet) then
         HUD.SET_BLIP_ALPHA(jetBlip, 0.0)
@@ -3060,7 +3046,7 @@ script.register_looped("misc", function(misc)
     local myVehModel = ENTITY.GET_ENTITY_MODEL(myVeh)
     if VEHICLE.IS_THIS_MODEL_A_CAR(myVehModel) or VEHICLE.IS_THIS_MODEL_A_BIKE(myVehModel) or VEHICLE.IS_THIS_MODEL_A_QUADBIKE(myVehModel) or VEHICLE.IS_THIS_MODEL_A_BICYCLE(myVehModel) then
       if not sittingInEscortCar then
-        validModel      = true
+        validModel = true
         if not es_attack then
           startFollowTask = true
         else
@@ -3083,15 +3069,16 @@ script.register_looped("misc", function(misc)
       escortLeftCar = false
     end
     misc:sleep(500)
-    if not dismissed then
+    if not dismissed and not es_attack then
       if startFollowTask then
         if not PED.IS_PED_SITTING_IN_VEHICLE(escort_1, escortCar) then
           TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-          misc:sleep(2000)
-          TASK.TASK_VEHICLE_ESCORT(escort_1, escortCar, myVeh, -1, mySpeed + 6.0, 24904187, 3.0, 3.0, 3.0) -- old=1074528293
-        else
-          TASK.TASK_VEHICLE_ESCORT(escort_1, escortCar, myVeh, -1, mySpeed + 6.0, 24904187, 3.0, 3.0, 3.0) -- old=1074528293
+          repeat
+          misc:sleep(1000)
+          until
+          PED.IS_PED_SITTING_IN_VEHICLE(escort_1, escortCar) == true
         end
+        TASK.TASK_VEHICLE_ESCORT(escort_1, escortCar, myVeh, -1, mySpeed + 6.0, 24904187, 3.0, 3.0, 3.0) -- old=1074528293
       end
     end
   end
@@ -3120,32 +3107,19 @@ script.register_looped("misc", function(misc)
   end
   if doDonuts then
     VEHICLE.SET_DRIFT_TYRES(escortCar, true)
-    VEHICLE.SET_VEHICLE_REDUCE_GRIP(escortCar, true)
-    VEHICLE.SET_VEHICLE_REDUCE_GRIP_LEVEL(escortCar, 2)
-    VEHICLE.SET_VEHICLE_CHEAT_POWER_INCREASE(escortCar, 1.8)
+    VEHICLE.SET_VEHICLE_CHEAT_POWER_INCREASE(escortCar, 20)
     TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, donutDirection, 100000)
   else
     VEHICLE.SET_DRIFT_TYRES(escortCar, false)
-    VEHICLE.SET_VEHICLE_REDUCE_GRIP(escortCar, false)
     VEHICLE.SET_VEHICLE_CHEAT_POWER_INCREASE(escortCar, 1.0)
   end
   if doingDriveBy then
-    nearestPed(escortCar)
-    if randomPed ~= 0 then
-      -- local pedCoords = ENTITY.GET_ENTITY_COORDS(randomPed, false)
-      -- local randomVeh = VEHICLE.GET_CLOSEST_VEHICLE(shooterPos.x, shooterPos.y, shooterPos.z, 400, 0, 70) -- we're shooting peds instead of vehicles.
-      -- if PED.IS_PED_SITTING_IN_ANY_VEHICLE(randomPed) then
-      --   if not ENTITY.IS_ENTITY_DEAD(randomPed) then
-          -- TASK.TASK_VEHICLE_CHASE(escort_1, randomPed)
-      --   else
-      --     TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 26, 2883621)
-      --   end
-      -- else
-        -- TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 26, 2883621) --8388614
-      -- end
-      TASK.TASK_VEHICLE_MISSION_PED_TARGET(escort_1, escortCar, randomPed, 6, 40, 1074528293, 5.0, 0.1, true)
-      TASK.TASK_DRIVE_BY(escort_2, randomPed, 0, 0.0, 0.0, 0.0, 100, 100, false, -957453492) -- old firing pattern: joaat("firing_pattern_burst_fire_driveby") = -753768974 || new firing pattern: joaat("firing_pattern_full_auto") = -957453492
-      TASK.TASK_DRIVE_BY(escort_3, randomPed, 0, 0.0, 0.0, 0.0, 100, 100, false, -957453492)
+    local victim = nearestPed(escortCar)
+    if victim ~= 0 then
+      -- TASK.TASK_VEHICLE_MISSION_PED_TARGET(escort_1, escortCar, victim, 6, 45, 1074528293, 5.0, 0.1, true) -- very aggressive! makes the driver chase the random victim which may result in the driver getting the car stuck or crashing it.
+      TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 40, 1074528293) -- not aggressive. driver doesn't chase victim but drives randomly instead.
+      TASK.TASK_DRIVE_BY(escort_2, victim, 0, 0.0, 0.0, 0.0, 100, 100, false, -957453492) -- old firing pattern: joaat("firing_pattern_burst_fire_driveby") = -753768974 || new firing pattern: joaat("firing_pattern_full_auto") = -957453492
+      TASK.TASK_DRIVE_BY(escort_3, victim, 0, 0.0, 0.0, 0.0, 100, 100, false, -957453492)
     else
       gui.show_error("Parivate Security", "Could not find a victim nearby! Try moving closer to a populated area.")
       doingDriveBy = false
@@ -3222,56 +3196,14 @@ script.register_looped("misc", function(misc)
         end
       end
       ------------prevent bodyguards from leaving group if the player dies-----------------
-      if not dismissedGuards then
-        if not PED.IS_PED_GROUP_MEMBER(guard_1, myGroup) then
-          PED.SET_PED_AS_GROUP_MEMBER(guard_1, myGroup)
-        end
-        if not PED.IS_PED_GROUP_MEMBER(guard_2, myGroup) then
-          PED.SET_PED_AS_GROUP_MEMBER(guard_2, myGroup)
-        end
-        if not PED.IS_PED_GROUP_MEMBER(guard_3, myGroup) then
-          PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
-        end
+      if not PED.IS_PED_GROUP_MEMBER(guard_1, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(guard_1, myGroup)
       end
-      ----------------------auto-heal bodyguards-----------------------------
-      local bg1MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(guard_1)
-      local bg2MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(guard_2)
-      local bg3MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(guard_3)
-      local bg1CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_1)
-      local bg2CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_2)
-      local bg3CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_3)
-      if bg1CurrHp < bg1MaxHp then
-        if not ENTITY.IS_ENTITY_DEAD(guard_1) and not PED.IS_PED_INJURED(guard_1) and not PED.IS_PED_FATALLY_INJURED(guard_1) then
-          if PED.IS_PED_IN_COVER(guard_1, false) then
-            bg1SleepTimer = 500
-          else
-            bg1SleepTimer = 1000
-          end
-          ENTITY.SET_ENTITY_HEALTH(guard_1, bg1CurrHp + 1, 0, 0)
-          misc:sleep(bg1SleepTimer)
-        end
+      if not PED.IS_PED_GROUP_MEMBER(guard_2, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(guard_2, myGroup)
       end
-      if bg2CurrHp < bg2MaxHp then
-        if not ENTITY.IS_ENTITY_DEAD(guard_2) and not PED.IS_PED_INJURED(guard_2) and not PED.IS_PED_FATALLY_INJURED(guard_2) then
-          if PED.IS_PED_IN_COVER(guard_2, false) then
-            bg2SleepTimer = 500
-          else
-            bg2SleepTimer = 1000
-          end
-          ENTITY.SET_ENTITY_HEALTH(guard_2, bg2CurrHp + 1, 0, 0)
-          misc:sleep(bg2SleepTimer)
-        end
-      end
-      if bg3CurrHp < bg3MaxHp then
-        if not ENTITY.IS_ENTITY_DEAD(guard_3) and not PED.IS_PED_INJURED(guard_3) and not PED.IS_PED_FATALLY_INJURED(guard_3) then
-          if PED.IS_PED_IN_COVER(guard_3, false) then
-            bg3SleepTimer = 500
-          else
-            bg3SleepTimer = 1000
-          end
-          ENTITY.SET_ENTITY_HEALTH(guard_3, bg3CurrHp + 1, 0, 0)
-          misc:sleep(bg3SleepTimer)
-        end
+      if not PED.IS_PED_GROUP_MEMBER(guard_3, myGroup) then
+        PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
       end
       ----------------------------------------------------------------------------------------
       if bg_attack then
@@ -3357,6 +3289,9 @@ script.register_looped("misc", function(misc)
         myGroup = PED.CREATE_GROUP(0)
       end
       PED.SET_PED_AS_GROUP_LEADER(self.get_ped(), myGroup)
+      PED.SET_GROUP_SEPARATION_RANGE(myGroup, 16960)
+      PED.SET_GROUP_FORMATION(myGroup, 2)
+      PED.SET_GROUP_FORMATION_SPACING(myGroup, 3.0, 3.0, 1.0)
       if not PED.IS_PED_SITTING_IN_VEHICLE(escort_1, escortCar) and not PED.IS_PED_SITTING_IN_VEHICLE(escort_2, escortCar) and not PED.IS_PED_SITTING_IN_VEHICLE(escort_3, escortCar) then
         escortLeftCar = true
       else
@@ -3472,50 +3407,13 @@ script.register_looped("misc", function(misc)
         PED.REMOVE_PED_FROM_GROUP(escort_3)
         PED.DELETE_PED(escort_3)
       end
-      ----------------------auto-heal escorts-----------------------------------------------
-      local e1MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(escort_1)
-      local e2MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(escort_2)
-      local e3MaxHp  = ENTITY.GET_ENTITY_MAX_HEALTH(escort_3)
-      local e1CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_1)
-      local e2CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_2)
-      local e3CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_3)
-      if e1CurrHp < e1MaxHp then
-        if not ENTITY.IS_ENTITY_DEAD(escort_1) and not PED.IS_PED_INJURED(escort_1) and not PED.IS_PED_FATALLY_INJURED(escort_1) then
-          if PED.IS_PED_IN_COVER(escort_1, false) then
-            e1SleepTimer = 500
-          else
-            e1SleepTimer = 1000
-          end
-          ENTITY.SET_ENTITY_HEALTH(escort_1, e1CurrHp + 1, 0, 0)
-          misc:sleep(e1SleepTimer)
-        end
-      end
-      if e2CurrHp < e2MaxHp then
-        if not ENTITY.IS_ENTITY_DEAD(escort_2) and not PED.IS_PED_INJURED(escort_2) and not PED.IS_PED_FATALLY_INJURED(escort_2) then
-          if PED.IS_PED_IN_COVER(escort_2, false) then
-            e2SleepTimer = 500
-          else
-            e2SleepTimer = 1000
-          end
-          ENTITY.SET_ENTITY_HEALTH(escort_2, e2CurrHp + 1, 0, 0)
-          misc:sleep(e2SleepTimer)
-        end
-      end
-      if e3CurrHp < e3MaxHp then
-        if not ENTITY.IS_ENTITY_DEAD(escort_3) and not PED.IS_PED_INJURED(escort_3) and not PED.IS_PED_FATALLY_INJURED(escort_3) then
-          if PED.IS_PED_IN_COVER(escort_3, false) then
-            e3SleepTimer = 500
-          else
-            e3SleepTimer = 1000
-          end
-          ENTITY.SET_ENTITY_HEALTH(escort_3, e3CurrHp + 1, 0, 0)
-          misc:sleep(e3SleepTimer)
-        end
-      end
       -------------------------------revive downed escorts----------------------------------
-      -- if PED.IS_PED_INJURED(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+      -- if PED.IS_PED_FATALLY_INJURED(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
       --   PED.SET_PED_DIES_WHEN_INJURED(escort_1, false)
       --   PED.SET_PED_CAN_BE_TARGETED_WHEN_INJURED(escort_1, false)
+      --   if not revivedEs1 then
+      --    ENTITY.SET_ENTITY_HEALTH(escort_1, 20, 0, 0)
+      --   end
       --   es_reviveMsg1        = true
       --   es_startReviveTimer1 = true
       --   local es1Dist = SYSTEM.VDIST(ENTITY.GET_ENTITY_COORDS(self.get_ped(), true), ENTITY.GET_ENTITY_COORDS(escort1, false))
@@ -3529,7 +3427,7 @@ script.register_looped("misc", function(misc)
       --     end
       --   end
       -- end
-      -- if PED.IS_PED_INJURED(escort_2) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+      -- if PED.IS_PED_FATALLY_INJURED(escort_2) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
       --   PED.SET_PED_DIES_WHEN_INJURED(escort_2, false)
       --   PED.SET_PED_CAN_BE_TARGETED_WHEN_INJURED(escort_2, false)
       --   es_reviveMsg2        = true
@@ -3545,7 +3443,7 @@ script.register_looped("misc", function(misc)
       --     end
       --   end
       -- end
-      -- if PED.IS_PED_INJURED(escort_3) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
+      -- if PED.IS_PED_FATALLY_INJURED(escort_3) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
       --   PED.SET_PED_DIES_WHEN_INJURED(escort_3, false)
       --   PED.SET_PED_CAN_BE_TARGETED_WHEN_INJURED(escort_3, false)
       --   es_reviveMsg3        = true
@@ -3623,7 +3521,9 @@ script.register_looped("misc", function(misc)
         end
       end
       if es_attack then
-        esAutoTp = false
+        startFollowTask = false
+        esAutoTp        = false
+        followOnFoot    = false
         if NETWORK.NETWORK_IS_PLAYER_ACTIVE(NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(targetPlayer)) then
           player_name = PLAYER.GET_PLAYER_NAME(NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(targetPlayer))
           if not PLAYER.IS_PLAYER_PLAYING(NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(targetPlayer)) then
@@ -3652,7 +3552,7 @@ script.register_looped("misc", function(misc)
             -- local playerPos = ENTITY.GET_ENTITY_COORDS(targetPlayer, true)
             -- TASK.TASK_VEHICLE_CHASE(escort_1, targetPlayer)
             -- TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(escort_1, escortCar, playerPos.x, playerPos.y, playerPos.z, 40, 1074528293, 50.0)
-            TASK.TASK_VEHICLE_MISSION_PED_TARGET(escort_1, escortCar, targetPlayer, 6, 40, 24904187, 1.0, 0.1, true)
+            TASK.TASK_VEHICLE_MISSION_PED_TARGET(escort_1, escortCar, targetPlayer, 6, 50, 24904187, 1.0, 0.1, true)
             TASK.TASK_DRIVE_BY(escort_2, targetPlayer, 0, 0.0, 0.0, 0.0, 100, 100, false, -957453492) --doDriveBy
             TASK.TASK_DRIVE_BY(escort_3, targetPlayer, 0, 0.0, 0.0, 0.0, 100, 100, false, -957453492) --//
             if ENTITY.IS_ENTITY_DEAD(escort_1) and ENTITY.IS_ENTITY_DEAD(escort_2) and ENTITY.IS_ENTITY_DEAD(escort_3) then
@@ -3661,7 +3561,6 @@ script.register_looped("misc", function(misc)
                 deadEsMsg       = false
                 es_attack       = false
                 esAutoTp        = true
-                startFollowTask = true
               end
             end
           else
@@ -3671,8 +3570,7 @@ script.register_looped("misc", function(misc)
             TASK.CLEAR_PED_TASKS(escort_2)
             TASK.CLEAR_PED_TASKS(escort_3)
             TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
-            esAutoTp        = true
-            startFollowTask = true
+            esAutoTp = true
           end
         else
           gui.show_message("Private Security", "Player Not Found! Falling back...")
@@ -3681,8 +3579,7 @@ script.register_looped("misc", function(misc)
           TASK.CLEAR_PED_TASKS(escort_2)
           TASK.CLEAR_PED_TASKS(escort_3)
           TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
-          esAutoTp        = true
-          startFollowTask = true
+          esAutoTp = true
         end
       end
       if followOnFoot then
@@ -3719,6 +3616,119 @@ script.register_looped("misc", function(misc)
         misc:sleep(3000)
         escortLeftCar = false
       end
+    end
+  end
+end)
+script.register_looped("Auto-heal", function(autoHeal)
+  if spawned_bodyguards[1] ~= nil then
+    if not dismissedGuards then
+      local bg1MaxHp  = 1000
+      local bg2MaxHp  = 1000
+      local bg3MaxHp  = 1000
+      local bg1CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_1)
+      local bg2CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_2)
+      local bg3CurrHp = ENTITY.GET_ENTITY_HEALTH(guard_3)
+      if bg1CurrHp < bg1MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(guard_1) then
+          if PED.IS_PED_IN_COVER(guard_1, false) then
+            bg1SleepTimer = 50
+          else
+            bg1SleepTimer = 100
+          end
+          ENTITY.SET_ENTITY_HEALTH(guard_1, math.floor(bg1CurrHp) + 1, 0, 0)
+          autoHeal:sleep(bg1SleepTimer)
+        end
+      end
+      if bg2CurrHp < bg2MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(guard_2) then
+          if PED.IS_PED_IN_COVER(guard_2, false) then
+            bg2SleepTimer = 50
+          else
+            bg2SleepTimer = 100
+          end
+          ENTITY.SET_ENTITY_HEALTH(guard_2, math.floor(bg2CurrHp) + 1, 0, 0)
+          autoHeal:sleep(bg2SleepTimer)
+        end
+      end
+      if bg3CurrHp < bg3MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(guard_3) then
+          if PED.IS_PED_IN_COVER(guard_3, false) then
+            bg3SleepTimer = 50
+          else
+            bg3SleepTimer = 100
+          end
+          ENTITY.SET_ENTITY_HEALTH(guard_3, math.floor(bg3CurrHp) + 1, 0, 0)
+          autoHeal:sleep(bg3SleepTimer)
+        end
+      end
+      autoHeal:yield()
+    end
+  end
+  if spawned_escorts[1] ~= nil then
+    if not dismissed then
+      local e1MaxHp  = 1000
+      local e2MaxHp  = 1000
+      local e3MaxHp  = 1000
+      local e1CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_1)
+      local e2CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_2)
+      local e3CurrHp = ENTITY.GET_ENTITY_HEALTH(escort_3)
+      if e1CurrHp < e1MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(escort_1) then
+          if PED.IS_PED_IN_COVER(escort_1, false) then
+            e1SleepTimer = 50
+          else
+            e1SleepTimer = 100
+          end
+          ENTITY.SET_ENTITY_HEALTH(escort_1, math.floor(e1CurrHp) + 10, 0, 0)
+          autoHeal:sleep(e1SleepTimer)
+        end
+      end
+      if e2CurrHp < e2MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(escort_2) then
+          if PED.IS_PED_IN_COVER(escort_2, false) then
+            e2SleepTimer = 50
+          else
+            e2SleepTimer = 100
+          end
+          ENTITY.SET_ENTITY_HEALTH(escort_2, math.floor(e2CurrHp) + 10, 0, 0)
+          autoHeal:sleep(e2SleepTimer)
+        end
+      end
+      if e3CurrHp < e3MaxHp then
+        if not ENTITY.IS_ENTITY_DEAD(escort_3) then
+          if PED.IS_PED_IN_COVER(escort_3, false) then
+            e3SleepTimer = 50
+          else
+            e3SleepTimer = 100
+          end
+          ENTITY.SET_ENTITY_HEALTH(escort_3, math.floor(e3CurrHp) + 10, 0, 0)
+          autoHeal:sleep(e3SleepTimer)
+        end
+      end
+      autoHeal:yield()
+    end
+  end
+end)
+script.register_looped("Revive", function()
+  if PED.IS_PED_FATALLY_INJURED(guard_1) and not ENTITY.IS_ENTITY_DEAD(guard_1) then
+    PED.SET_PED_DIES_WHEN_INJURED(guard_1, false)
+    PED.SET_PED_CAN_BE_TARGETED_WHEN_INJURED(guard_1, false)
+    if ENTITY.GET_ENTITY_HEALTH(guard_1) >= 10 then
+      PED.REVIVE_INJURED_PED(guard_1)
+    end
+  end
+  if PED.IS_PED_FATALLY_INJURED(guard_2) and not ENTITY.IS_ENTITY_DEAD(guard_2) then
+    PED.SET_PED_DIES_WHEN_INJURED(guard_2, false)
+    PED.SET_PED_CAN_BE_TARGETED_WHEN_INJURED(guard_2, false)
+    if ENTITY.GET_ENTITY_HEALTH(guard_2) >= 10 then
+      PED.REVIVE_INJURED_PED(guard_2)
+    end
+  end
+  if PED.IS_PED_FATALLY_INJURED(guard_3) and not ENTITY.IS_ENTITY_DEAD(guard_3) then
+    PED.SET_PED_DIES_WHEN_INJURED(guard_3, false)
+    PED.SET_PED_CAN_BE_TARGETED_WHEN_INJURED(guard_3, false)
+    if ENTITY.GET_ENTITY_HEALTH(guard_3) >= 10 then
+      PED.REVIVE_INJURED_PED(guard_3)
     end
   end
 end)
