@@ -40,6 +40,8 @@ local plyrWindow                = false
 local bg_attack                 = false
 local es_attack                 = false
 local dbgWindow                 = false
+local sirenOn                   = false
+local quickSiren                = false
 local bgAutoTp                  = true
 local esAutoTp                  = true
 local arprtLstTop               = true
@@ -107,20 +109,20 @@ local bodyguards = {
   {name = "Armenian Mobsters",    pedType = "PED_TYPE_GANG_ALBANIAN",         modelHash = {a = 0xE7714013, b = 0xFDA94268, c = 0xF1E823A2}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 83136452,    vehCol = 111, vehRadio = "RADIO_15_MOTOWN"    },  -- //
   {name = "Cartel Sicarios",      pedType = "PED_TYPE_GANG_PUERTO_RICAN",     modelHash = {a = 0x995B3F9F, b = 0x7ED5AD78, c = 0xE6AC74A4}, weaponHash = {main = 0xBFEFFF6D, sec = 350597077},  vehicle = 4256087847,  vehCol = 0,   vehRadio = "RADIO_08_MEXICAN"   },  -- Assault Rifle + Tactical SMG
   {name = "Bad Bitches",          pedType = "PED_TYPE_PROSTITUTE",            modelHash = {a = 0x28ABF95,  b = 0x81441B71, c = 0xAEEA76B5}, weaponHash = {main = 350597077,  sec = 0},          vehicle = 461465043,   vehCol = 30,  vehRadio = "RADIO_02_POP"       },  -- Tactical SMG
-  {name = "Law: FIB",             pedType = "PED_TYPE_COP",                   modelHash = {a = 0x5CDEF405, b = 0x7B8B434B, c = 0x5CDEF405}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 2647026068,  vehCol = _,   vehRadio = "RADIO_19_USER"      },
-  {name = "Law: LSPD",            pedType = "PED_TYPE_COP",                   modelHash = {a = 0x5E3DA4A4, b = 0x15F8700D, c = 0x5E3DA4A4}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 1912215274,  vehCol = _,   vehRadio = "RADIO_19_USER"      },
-  {name = "Law: SWAT",            pedType = "PED_TYPE_COP",                   modelHash = {a = 0x8D8F1B10, b = 0x8D8F1B10, c = 0x8D8F1B10}, weaponHash = {main = 736523883, sec = 0x1B06D571},  vehicle = 3089277354,  vehCol = _,   vehRadio = "RADIO_19_USER"      },
+  {name = "Law: FIB",             pedType = "PED_TYPE_COP",                   modelHash = {a = 0x5CDEF405, b = 0x7B8B434B, c = 0x5CDEF405}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 2647026068,  vehCol = _,   vehRadio = "OFF"                },
+  {name = "Law: LSPD",            pedType = "PED_TYPE_COP",                   modelHash = {a = 0x5E3DA4A4, b = 0x15F8700D, c = 0x5E3DA4A4}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 1912215274,  vehCol = _,   vehRadio = "OFF"                },
+  {name = "Law: SWAT",            pedType = "PED_TYPE_COP",                   modelHash = {a = 0x8D8F1B10, b = 0x8D8F1B10, c = 0x8D8F1B10}, weaponHash = {main = 736523883, sec = 0x1B06D571},  vehicle = 3089277354,  vehCol = _,   vehRadio = "OFF"                },
 }
-local melee_weapons = {0x92A27487, 0x958A4A8F, 0xF9E6AA4B, 0x84BD7BFD, 0x8BB05FD7, 0x440E4788, 0x4E875F73, 0xF9DCBF2D, 0xD8DF3C3C, 0x99B507EA, 0xDD5DF8D9, 0xDFE37640, 0x678B81B1, 0x19044EE0, 0xCD274149, 0x94117305, 0x3813FC08,}
-local handguns = {0x1B06D571, 0xBFE256D4, 0x5EF9FEC4, 0x22D8FE39, 0x3656C8C1, 0x99AEEB3B, 0xBFD21232, 0x88374054, 0xD205520E, 0x83839C4 , 0x47757124, 0xDC4DB296, 0xC1B3C3D1, 0xCB96392F, 0x97EA20B8, 0xAF3696A1, 0x2B5EF5EC, 0x917F6C8C,}
-local smg = {0x13532244, 0x2BE6766B, 0x78A97CD0, 0xEFE7E2DF, 0xA3D4D34, 0xDB1AA450, 0xBD248B55, 0x476BF155,}
-local shotguns = {0x1D073A89, 0x555AF99A, 0x7846A318, 0xE284C527, 0x9D61E50F, 0xA89CB99E, 0x3AABBBAA, 0xEF951FBB, 0x12E82D3D,}
+local melee_weapons  = {0x92A27487, 0x958A4A8F, 0xF9E6AA4B, 0x84BD7BFD, 0x8BB05FD7, 0x440E4788, 0x4E875F73, 0xF9DCBF2D, 0xD8DF3C3C, 0x99B507EA, 0xDD5DF8D9, 0xDFE37640, 0x678B81B1, 0x19044EE0, 0xCD274149, 0x94117305, 0x3813FC08,}
+local handguns       = {0x1B06D571, 0xBFE256D4, 0x5EF9FEC4, 0x22D8FE39, 0x3656C8C1, 0x99AEEB3B, 0xBFD21232, 0x88374054, 0xD205520E, 0x83839C4 , 0x47757124, 0xDC4DB296, 0xC1B3C3D1, 0xCB96392F, 0x97EA20B8, 0xAF3696A1, 0x2B5EF5EC, 0x917F6C8C,}
+local smg            = {0x13532244, 0x2BE6766B, 0x78A97CD0, 0xEFE7E2DF, 0xA3D4D34, 0xDB1AA450, 0xBD248B55, 0x476BF155,}
+local shotguns       = {0x1D073A89, 0x555AF99A, 0x7846A318, 0xE284C527, 0x9D61E50F, 0xA89CB99E, 0x3AABBBAA, 0xEF951FBB, 0x12E82D3D,}
 local assault_rifles = {0xBFEFFF6D, 0x394F415C, 0x83BF0278, 0xFAD1F1C9, 0xAF113F99, 0xC0A3098D, 0x969C3D67, 0x7F229F94, 0x84D6FAFD, 0x624FE830,}
-local machine_guns = {0x9D07F764, 0x7FD62962, 0xDBBD7280, 0x61012683,}
-local sniper_rifles = {0x5FC3C11, 0xC472FE2, 0xA914799, 0xC734385A, 0x6A6C02E0,}
-local heavy_weapons = {0xB1CA77B1, 0xA284510B, 0x4DD2DC56, 0x42BF8A85, 0x7F7497E5, 0x6D544C99, 0x63AB0442, 0x781FE4A, 0xB62D1F67,}
-local throwables = {0x93E220BD, 0xA0973D5E, 0xFDBC8A50, 0x497FACC3, 0x24B17070, 0x2C3731D9, 0xAB564B93, 0x787F0BB, 0xBA45E8B8, 0x23C9F95C,}
--- local misc_weapons = {0x34A67B97, 0x60EC506, 0xFBAB5776, 0xBA536372,}
+local machine_guns   = {0x9D07F764, 0x7FD62962, 0xDBBD7280, 0x61012683,}
+local sniper_rifles  = {0x5FC3C11, 0xC472FE2, 0xA914799, 0xC734385A, 0x6A6C02E0,}
+local heavy_weapons  = {0xB1CA77B1, 0xA284510B, 0x4DD2DC56, 0x42BF8A85, 0x7F7497E5, 0x6D544C99, 0x63AB0442, 0x781FE4A, 0xB62D1F67,}
+local throwables     = {0x93E220BD, 0xA0973D5E, 0xFDBC8A50, 0x497FACC3, 0x24B17070, 0x2C3731D9, 0xAB564B93, 0x787F0BB, 0xBA45E8B8, 0x23C9F95C,}
+-- local misc_weapons   = {0x34A67B97, 0x60EC506, 0xFBAB5776, 0xBA536372,}
 local function displayMelee()
   local meleeNames = {}
   for _, wpn in ipairs(melee_weapons) do
@@ -301,7 +303,14 @@ local function displayPlayerList()
   updatePlayerList()
   local playerNames = {}
   for _, player in ipairs(filteredPlayers) do
-    playerName = PLAYER.GET_PLAYER_NAME(NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(player))
+    local playerName = PLAYER.GET_PLAYER_NAME(NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(player))
+    local playerHost = NETWORK.NETWORK_GET_HOST_PLAYER_INDEX()
+      if NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(player) == PLAYER.PLAYER_ID() then
+        playerName = playerName.."  [You]"
+      end
+      if playerHost == NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(player) then
+        playerName = playerName.."  [Host]"
+      end
     table.insert(playerNames, playerName)
   end
   playerIndex, used = ImGui.Combo("##playerList", playerIndex, playerNames, #filteredPlayers)
@@ -1684,28 +1693,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = melee_weapons[meleeIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##melee") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##melee") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##melee") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##melee") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -1719,28 +1728,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = handguns[pistolIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##pistols") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##pistols") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##pistols") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##pistols") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -1755,28 +1764,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = smg[smgIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##smg") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##smg") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##smg") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##smg") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -1790,28 +1799,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = shotguns[sgIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##sg") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##sg") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##sg") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##sg") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -1825,28 +1834,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = assault_rifles[arIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##ar") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##ar") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##ar") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##ar") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -1860,28 +1869,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = machine_guns[mgIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##mg") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##mg") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##mg") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##mg") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -1895,28 +1904,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = sniper_rifles[srIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##sr") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##sr") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##sr") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##sr") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -1930,28 +1939,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = heavy_weapons[hvyIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##hvy") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##hvy") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##hvy") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##hvy") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -1965,28 +1974,28 @@ billionaire_services:add_imgui(function()
             local selectedWpn = throwables[grIdx + 1]
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
-              if ImGui.Button("Give To Bodyguards") then
+              if ImGui.Button("Give To Bodyguards##gr") then
                 giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##gr") then
                 removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
                 removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
               end
             end
             if spawned_escorts[1] ~= nil then
-              if ImGui.Button("Give To Escorts") then
+              if ImGui.Button("Give To Escorts##gr") then
                 giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ") then
+              if ImGui.Button(" Remove ##gr") then
                 removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
                 removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -2000,26 +2009,26 @@ billionaire_services:add_imgui(function()
           --   local selectedWpn = misc_weapons[miscIdx + 1]
           --   local weaponName  = weapons.get_weapon_display_name(selectedWpn)
           --   if spawned_bodyguards[1] ~= nil then
-          --     if ImGui.Button("Give To Bodyguards") then
+          --     if ImGui.Button("Give To Bodyguards##misc") then
           --       giveWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
           --       giveWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
           --       giveWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
           --     end
           --     ImGui.SameLine()
-          --     if ImGui.Button(" Remove ") then
+          --     if ImGui.Button(" Remove ##misc") then
           --       removeWeapon(guard_1, selectedWpn, weaponName, "bodyguards")
           --       removeWeapon(guard_2, selectedWpn, weaponName, "bodyguards")
           --       removeWeapon(guard_3, selectedWpn, weaponName, "bodyguards")
           --     end
           --   end
           --   if spawned_escorts[1] ~= nil then
-          --     if ImGui.Button("Give To Escorts") then
+          --     if ImGui.Button("Give To Escorts##misc") then
           --       giveWeapon(escort_1, selectedWpn, weaponName, "escorts")
           --       giveWeapon(escort_2, selectedWpn, weaponName, "escorts")
           --       giveWeapon(escort_3, selectedWpn, weaponName, "escorts")
           --     end
           --     ImGui.SameLine()
-          --     if ImGui.Button(" Remove ") then
+          --     if ImGui.Button(" Remove ##misc") then
           --       removeWeapon(escort_1, selectedWpn, weaponName, "escorts")
           --       removeWeapon(escort_2, selectedWpn, weaponName, "escorts")
           --       removeWeapon(escort_3, selectedWpn, weaponName, "escorts")
@@ -2080,7 +2089,7 @@ billionaire_services:add_imgui(function()
             plyrWindow = false
           end
           ImGui.Text("Choose a Player To Attack:")
-          ImGui.PushItemWidth(250)
+          ImGui.PushItemWidth(300)
           displayPlayerList()
           ImGui.PopItemWidth()
           selectedPlayer = filteredPlayers[playerIndex + 1]
@@ -2272,52 +2281,69 @@ billionaire_services:add_imgui(function()
           ImGui.Separator()
           ImGui.Spacing()
           if sittingInEscortCar then
-            ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Radio")
-            if AUDIO.IS_VEHICLE_RADIO_ON(escortCar) then
-              ImGui.Dummy(125, 1);ImGui.SameLine()
-              if ImGui.Button("Turn Off") then
-                AUDIO.SET_VEH_RADIO_STATION(escortCar, "OFF")
-              end
-              ImGui.Dummy(5, 1);ImGui.SameLine()
-              if ImGui.Button("< Previous Station") then
-                AUDIO.SET_RADIO_RETUNE_DOWN()
-              end
-              ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
-              if ImGui.Button("Next Station >") then
-                AUDIO.SET_RADIO_RETUNE_UP()
-              end
-              local stationName = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
-              local displayName = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(stationName)
-              ImGui.Text("Now Playing: "..displayName)
-              ImGui.Separator()
-            else
-              ImGui.Dummy(125, 1);ImGui.SameLine()
-              if ImGui.Button("Turn On") then
-                AUDIO.SET_VEH_RADIO_STATION(escortCar, bGuardData.vehRadio)
-              end
-            end
-            if law then
-              ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Siren")
-              if VEHICLE.IS_VEHICLE_SIREN_ON(escortCar) then
-                ImGui.Dummy(123, 1);ImGui.SameLine()
-                if ImGui.Button(" Turn Off ") then
-                  VEHICLE.SET_VEHICLE_SIREN(escortCar, false)
+            if not law then
+              ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Radio")
+              if AUDIO.IS_VEHICLE_RADIO_ON(escortCar) then
+                ImGui.Dummy(125, 1);ImGui.SameLine()
+                if ImGui.Button("Turn Off") then
+                  AUDIO.SET_VEH_RADIO_STATION(escortCar, "OFF")
                 end
-                if VEHICLE.IS_VEHICLE_SIREN_AUDIO_ON(escortCar) then
-                  ImGui.Dummy(140, 1);ImGui.SameLine()
-                  if ImGui.Button("Mute") then
-                    VEHICLE.SET_VEHICLE_HAS_MUTED_SIRENS(escortCar, true)
+                ImGui.Dummy(5, 1);ImGui.SameLine()
+                if ImGui.Button("< Previous Station") then
+                  AUDIO.SET_RADIO_RETUNE_DOWN()
+                end
+                ImGui.SameLine();ImGui.Spacing();ImGui.SameLine()
+                if ImGui.Button("Next Station >") then
+                  AUDIO.SET_RADIO_RETUNE_UP()
+                end
+                local stationName = AUDIO.GET_PLAYER_RADIO_STATION_NAME()
+                local displayName = HUD.GET_FILENAME_FOR_AUDIO_CONVERSATION(stationName)
+                ImGui.Text("Now Playing: "..displayName)
+                ImGui.Separator()
+              else
+                ImGui.Dummy(125, 1);ImGui.SameLine()
+                if ImGui.Button("Turn On") then
+                  AUDIO.SET_VEH_RADIO_STATION(escortCar, bGuardData.vehRadio)
+                end
+              end
+            else
+              ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Siren")
+              if sirenOn then
+                if not quickSiren then
+                  ImGui.Dummy(123, 1);ImGui.SameLine()
+                  if ImGui.Button(" Turn Off ") then
+                    VEHICLE.SET_VEHICLE_SIREN(escortCar, false)
+                    sirenOn = false
                   end
-                else
-                  ImGui.Dummy(126, 1);ImGui.SameLine()
-                  if ImGui.Button("Un-mute") then
-                    VEHICLE.SET_VEHICLE_HAS_MUTED_SIRENS(escortCar, false)
+                  if VEHICLE.IS_VEHICLE_SIREN_AUDIO_ON(escortCar) then
+                    ImGui.Dummy(140, 1);ImGui.SameLine()
+                    if ImGui.Button("Mute") then
+                      VEHICLE.SET_VEHICLE_HAS_MUTED_SIRENS(escortCar, true)
+                    end
+                  else
+                    ImGui.Dummy(126, 1);ImGui.SameLine()
+                    if ImGui.Button("Un-mute") then
+                      VEHICLE.SET_VEHICLE_HAS_MUTED_SIRENS(escortCar, false)
+                    end
                   end
                 end
               else
-                ImGui.Dummy(123, 1);ImGui.SameLine()
+                ImGui.Dummy(75, 1);ImGui.SameLine()
                 if ImGui.Button(" Turn On ") then
                   VEHICLE.SET_VEHICLE_SIREN(escortCar, true)
+                  sirenOn = true
+                end
+                ImGui.SameLine()
+                if ImGui.Button("Quick Siren") then
+                  if not sirenOn then
+                    script.run_in_fiber(function(qh)
+                      VEHICLE.SET_VEHICLE_SIREN(escortCar, true)
+                      quickSiren = true
+                      qh:sleep(200)
+                      VEHICLE.SET_VEHICLE_SIREN(escortCar, false)
+                      quickSiren = false
+                    end)
+                  end
                 end
               end
             end
@@ -3685,6 +3711,8 @@ script.register_looped("misc", function(misc)
         escortLeftCar = false
       end
     end
+  end
+  if PED.IS_PED_IN_VEHICLE(self.get_ped(), escortCar, true) then
     if law then
       PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(escort_1, true)
       PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(escort_2, true)
