@@ -382,30 +382,6 @@ local function iter(table)
     end
   end
 end
-local function rainbowHeadlights(vehicle)
-  script.run_in_fiber(function(rbw)
-    local lightIntensity = 1.0
-    VEHICLE.TOGGLE_VEHICLE_MOD(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 22, true)
-    for i = 0, 14 do
-      repeat
-        VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), lightIntensity - 0.1)
-        rbw:sleep(10)
-      until lightIntensity == 0.1
-      VEHICLE.SET_VEHICLE_XENON_LIGHT_COLOR_INDEX(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), i)
-      i = i + 1
-      local newIntensity = 0.1
-      repeat
-        VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), newIntensity + 0.1)
-        rbw:sleep(10)
-      until newIntensity == 1.0
-      rbw:sleep(500)
-      if i >= 14 then
-        i = 0
-        i = i + 1
-      end
-    end
-  end)
-end
 local function nearestPed(closeTo)
   script.run_in_fiber(function()
     local gtaPeds = entities.get_all_peds_as_handles()
