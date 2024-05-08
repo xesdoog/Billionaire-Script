@@ -32,6 +32,8 @@ local mgIdx                     = 0
 local srIdx                     = 0
 local hvyIdx                    = 0
 local grIdx                     = 0
+local lightSpeed                = 0
+local rgbLights                 = false
 local bg_unarmed                = false
 local es_unarmed                = false
 local wpnWindow                 = false
@@ -109,9 +111,9 @@ local bodyguards = {
   {name = "Armenian Mobsters",    pedType = "PED_TYPE_GANG_ALBANIAN",         modelHash = {a = 0xE7714013, b = 0xFDA94268, c = 0xF1E823A2}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 83136452,    vehCol = 111, vehRadio = "RADIO_15_MOTOWN"    },  -- //
   {name = "Cartel Sicarios",      pedType = "PED_TYPE_GANG_PUERTO_RICAN",     modelHash = {a = 0x995B3F9F, b = 0x7ED5AD78, c = 0xE6AC74A4}, weaponHash = {main = 0xBFEFFF6D, sec = 350597077},  vehicle = 4256087847,  vehCol = 0,   vehRadio = "RADIO_08_MEXICAN"   },  -- Assault Rifle + Tactical SMG
   {name = "Bad Bitches",          pedType = "PED_TYPE_PROSTITUTE",            modelHash = {a = 0x28ABF95,  b = 0x81441B71, c = 0xAEEA76B5}, weaponHash = {main = 350597077,  sec = 0},          vehicle = 461465043,   vehCol = 30,  vehRadio = "RADIO_02_POP"       },  -- Tactical SMG
-  {name = "Law: FIB",             pedType = "PED_TYPE_COP",                   modelHash = {a = 0x5CDEF405, b = 0x7B8B434B, c = 0x5CDEF405}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 2647026068,  vehCol = _,   vehRadio = "OFF"                },
+  {name = "Law: FIB",             pedType = "PED_TYPE_COP",                   modelHash = {a = 0xEDBC7546, b = 0x7B8B434B, c = 0x5CDEF405}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 2647026068,  vehCol = _,   vehRadio = "OFF"                },
   {name = "Law: LSPD",            pedType = "PED_TYPE_COP",                   modelHash = {a = 0x5E3DA4A4, b = 0x15F8700D, c = 0x5E3DA4A4}, weaponHash = {main = 0x1B06D571, sec = 0},          vehicle = 1912215274,  vehCol = _,   vehRadio = "OFF"                },
-  {name = "Law: SWAT",            pedType = "PED_TYPE_COP",                   modelHash = {a = 0x8D8F1B10, b = 0x8D8F1B10, c = 0x8D8F1B10}, weaponHash = {main = 736523883, sec = 0x1B06D571},  vehicle = 3089277354,  vehCol = _,   vehRadio = "OFF"                },
+  {name = "Law: SWAT",            pedType = "PED_TYPE_COP",                   modelHash = {a = 0x8D8F1B10, b = 0x8D8F1B10, c = 0x8D8F1B10}, weaponHash = {main = 736523883,  sec = 0x1B06D571}, vehicle = 3089277354,  vehCol = _,   vehRadio = "OFF"                },
 }
 local melee_weapons  = {0x92A27487, 0x958A4A8F, 0xF9E6AA4B, 0x84BD7BFD, 0x8BB05FD7, 0x440E4788, 0x4E875F73, 0xF9DCBF2D, 0xD8DF3C3C, 0x99B507EA, 0xDD5DF8D9, 0xDFE37640, 0x678B81B1, 0x19044EE0, 0xCD274149, 0x94117305, 0x3813FC08,}
 local handguns       = {0x1B06D571, 0xBFE256D4, 0x5EF9FEC4, 0x22D8FE39, 0x3656C8C1, 0x99AEEB3B, 0xBFD21232, 0x88374054, 0xD205520E, 0x83839C4 , 0x47757124, 0xDC4DB296, 0xC1B3C3D1, 0xCB96392F, 0x97EA20B8, 0xAF3696A1, 0x2B5EF5EC, 0x917F6C8C,}
@@ -331,10 +333,16 @@ local function pedConfig(ped)
     PED.SET_PED_CONFIG_FLAG(ped, 398, true)
     PED.SET_PED_CONFIG_FLAG(ped, 401, true)
     PED.SET_PED_CONFIG_FLAG(ped, 443, true)
+    PED.SET_RAGDOLL_BLOCKING_FLAGS(ped, 0)
+    PED.SET_RAGDOLL_BLOCKING_FLAGS(ped, 4)
+    PED.SET_RAGDOLL_BLOCKING_FLAGS(ped, 6)
+    PED.SET_RAGDOLL_BLOCKING_FLAGS(ped, 13)
+    PED.SET_RAGDOLL_BLOCKING_FLAGS(ped, 14)
+    PED.SET_RAGDOLL_BLOCKING_FLAGS(ped, 15)
     PED.SET_PED_COMBAT_ABILITY(ped, 2)
-    PED.SET_PED_HIGHLY_PERCEPTIVE(ped, true)
     PED.SET_PED_COMBAT_MOVEMENT(ped, 2)
     PED.SET_PED_COMBAT_RANGE(ped, 2)
+    PED.SET_PED_HIGHLY_PERCEPTIVE(ped, true)
     PED.SET_PED_SEEING_RANGE(ped, 300.0)
     PED.SET_PED_HEARING_RANGE(ped, 300.0)
     PED.SET_PED_COMBAT_ATTRIBUTES(ped, 1, true)
@@ -361,8 +369,8 @@ local function pedConfig(ped)
     PED.SET_PED_COMBAT_ATTRIBUTES(ped, 71, true)
     PED.SET_PED_ACCURACY(ped, math.ceil(math.random(70, 100)))
     PED.SET_PED_CAN_SWITCH_WEAPON(ped, true)
+    PED.SET_PED_CAN_BE_DRAGGED_OUT(ped, false)
     WEAPON.SET_PED_DROPS_WEAPONS_WHEN_DEAD(ped, false)
-    PED.SET_PED_SUFFERS_CRITICAL_HITS(ped, false)
 end
 local function iter(table)
   local i = 0
@@ -373,6 +381,30 @@ local function iter(table)
       return table[i]
     end
   end
+end
+local function rainbowHeadlights(vehicle)
+  script.run_in_fiber(function(rbw)
+    local lightIntensity = 1.0
+    VEHICLE.TOGGLE_VEHICLE_MOD(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 22, true)
+    for i = 0, 14 do
+      repeat
+        VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), lightIntensity - 0.1)
+        rbw:sleep(10)
+      until lightIntensity == 0.1
+      VEHICLE.SET_VEHICLE_XENON_LIGHT_COLOR_INDEX(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), i)
+      i = i + 1
+      local newIntensity = 0.1
+      repeat
+        VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), newIntensity + 0.1)
+        rbw:sleep(10)
+      until newIntensity == 1.0
+      rbw:sleep(500)
+      if i >= 14 then
+        i = 0
+        i = i + 1
+      end
+    end
+  end)
 end
 local function nearestPed(closeTo)
   script.run_in_fiber(function()
@@ -456,6 +488,7 @@ billionaire_services:add_imgui(function()
           VEHICLE.SET_VEHICLE_STRONG(pJet, true)
           VEHICLE.SET_VEHICLE_ALLOW_HOMING_MISSLE_LOCKON(pJet, false, 0)
           VEHICLE.SET_VEHICLE_DOOR_OPEN(pJet, 0, false, false)
+          VEHICLE.SET_VEHICLE_OCCUPANTS_TAKE_EXPLOSIVE_DAMAGE(pJet, false)
           jetBlip = HUD.ADD_BLIP_FOR_ENTITY(pJet)
           HUD.SET_BLIP_SPRITE(jetBlip, 423)
           HUD.SET_BLIP_SCALE(jetBlip, 1.2)
@@ -867,6 +900,7 @@ billionaire_services:add_imgui(function()
             VEHICLE.SET_VEHICLE_MOD_KIT(limo, 0)
             VEHICLE.SET_VEHICLE_NUMBER_PLATE_TEXT(limo, "BALL3R")
             VEHICLE.SET_VEHICLE_WINDOW_TINT(limo, 1) -- limo black windows //
+            VEHICLE.TOGGLE_VEHICLE_MOD(limo, 18, true)
             VEHICLE.SET_VEHICLE_COLOURS(limo, 111, 111)
             VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(limo, false)
             VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(limo, false)
@@ -874,6 +908,7 @@ billionaire_services:add_imgui(function()
             VEHICLE.SET_VEHICLE_STRONG(limo, true)
             VEHICLE.SET_VEHICLE_DISABLE_TOWING(limo, true)
             VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(limo, false)
+            VEHICLE.SET_VEHICLE_OCCUPANTS_TAKE_EXPLOSIVE_DAMAGE(limo, false)
             ENTITY.SET_ENTITY_INVINCIBLE(limo, true)
             limoBlip = HUD.ADD_BLIP_FOR_ENTITY(limo)
             HUD.SET_BLIP_SPRITE(limoBlip, 724)
@@ -944,44 +979,100 @@ billionaire_services:add_imgui(function()
       ImGui.Separator()
       if sittingInLimo then
         ImGui.Spacing()
-        if ImGui.Button("Drive To Waypoint") then
-          script.run_in_fiber(function(limoService)
-            local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
-            if HUD.DOES_BLIP_EXIST(waypoint) then
-              destination = HUD.GET_BLIP_COORDS(waypoint)
-            else
-              gui.show_error("Private Limo", "Please set a waypoint on the map first!")
-              return
+        if not limoWp then
+          if ImGui.Button("Drive To Waypoint##limo") then
+            if limoCr then
+              limoCr = false
             end
-              TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(limoDriver, limo, destination.x, destination.y, destination.z, 25, 786603, 20.0)
-              limoService:sleep(500)
-              limoWp = true
-              gui.show_message("Private Limo", "Driving to waypoint...")
-          end)
-        end
-        ImGui.SameLine()
-        if ImGui.Button("Cruise Around") then
-          script.run_in_fiber(function(limoService)
-            TASK.TASK_VEHICLE_DRIVE_WANDER(limoDriver, limo, 25, 786603)
-            limoService:sleep(500)
-            limoCr = true
-          end)
-          if limoWp then
-              gui.show_message("Private Limo", "Drive To Waypoint canceled. Going for a ride instead.")
-              limoWp = false
-          else
-            gui.show_message("Private Limo", "Going for a ride...")
+            script.run_in_fiber(function(limoService)
+              local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
+              if HUD.DOES_BLIP_EXIST(waypoint) then
+                destination = HUD.GET_BLIP_COORDS(waypoint)
+              else
+                gui.show_error("Private Limo", "Please set a waypoint on the map first!")
+                return
+              end
+                TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(limoDriver, limo, destination.x, destination.y, destination.z, 19.0, 786603, 20.0) -- calm: 786603
+                limoService:sleep(500)
+                limoWp      = true
+                limoWpChill = true
+                gui.show_message("Private Limo", "Driving to waypoint...")
+            end)
           end
-        end
-        if limoWp or limoCr then
+        else
+          if limoWpChill then
+            if ImGui.Button("Hurry Up!##limoWp") then
+              script.run_in_fiber(function()
+                AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(limoDriver, "GENERIC_YES", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(limoDriver, limo, destination.x, destination.y, destination.z, 40.0, 1074528293, 20.0)
+                limoWpChill = false
+              end)
+            end
+          else
+            if ImGui.Button("Slow Down##limoWp") then
+              script.run_in_fiber(function()
+                AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(limoDriver, "GENERIC_YES", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(limoDriver, limo, destination.x, destination.y, destination.z, 19.0, 786603, 20.0)
+                limoWpChill = true
+              end)
+            end
+          end
           ImGui.SameLine()
-          if ImGui.Button("Stop") then
+          if ImGui.Button("Stop##WP") then
             script.run_in_fiber(function()
               TASK.CLEAR_PED_TASKS(limoDriver)
               TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
               TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
               TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
               limoWp = false
+            end)
+          end
+        end
+        if not limoCr then
+          if ImGui.Button("Cruise Around##limo") then
+            script.run_in_fiber(function(limoService)
+              if limoWp then
+                gui.show_message("Private Limo", "Drive To Waypoint canceled. Going for a ride instead.")
+                TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
+                limoWp = false
+              else
+                gui.show_message("Private Limo", "Going for a ride...")
+              end
+              TASK.TASK_VEHICLE_DRIVE_WANDER(limoDriver, limo, 19.0, 786603)
+              limoService:sleep(500)
+              limoCr      = true
+              limoCrChill = true
+            end)
+          end
+        else
+          if limoCrChill then
+            if ImGui.Button("Hurry Up!##limoCr") then
+              script.run_in_fiber(function()
+                AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(limoDriver, "GENERIC_YES", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                TASK.TASK_VEHICLE_DRIVE_WANDER(limoDriver, limo, 40, 1074528293)
+                limoCrChill = false
+              end)
+            end
+          else
+            if ImGui.Button("Slow Down##limoCr") then
+              script.run_in_fiber(function()
+                TASK.CLEAR_PED_TASKS(limoDriver)
+                TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
+                TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
+                TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
+                AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(limoDriver, "GENERIC_YES", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                TASK.TASK_VEHICLE_DRIVE_WANDER(limoDriver, limo, 19.0, 786603)
+                limoCrChill = true
+              end)
+            end
+          end
+          ImGui.SameLine()
+          if ImGui.Button("Stop##CR") then
+            script.run_in_fiber(function()
+              TASK.CLEAR_PED_TASKS(limoDriver)
+              TASK.CLEAR_PED_SECONDARY_TASK(limoDriver)
+              TASK.CLEAR_PRIMARY_VEHICLE_TASK(limo)
+              TASK.TASK_VEHICLE_TEMP_ACTION(limoDriver, limo, 1, 2000)
               limoCr = false
             end)
           end
@@ -1086,76 +1177,85 @@ billionaire_services:add_imgui(function()
             coroutine.yield()
           end
           guard_1 = PED.CREATE_PED(bGuardData.pedType, bGuardData.modelHash.a, 0.0, 0.0, 0.0, 0.0, true, false)
-          ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_1, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
-          ENTITY.SET_ENTITY_HEADING(guard_1, myHeading - 180)
-          ENTITY.SET_ENTITY_MAX_HEALTH(guard_1, 1000)
-          ENTITY.SET_ENTITY_HEALTH(guard_1, 1000, 0, 0)
-          PED.SET_PED_AS_GROUP_MEMBER(guard_1, myGroup)
-          PED.SET_PED_NEVER_LEAVES_GROUP(guard_1, true)
-          PED.SET_PED_ARMOUR(guard_1, 100)
-          WEAPON.GIVE_WEAPON_TO_PED(guard_1, bGuardData.weaponHash.main, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(guard_1, true, bGuardData.weaponHash.main)
-          if bGuardData.weaponHash.sec ~= 0 then
-            WEAPON.GIVE_WEAPON_TO_PED(guard_1, bGuardData.weaponHash.sec, 9999, false, true)
-            WEAPON.SET_PED_INFINITE_AMMO(guard_1, true, bGuardData.weaponHash.sec)
-          end
           table.insert(spawned_bodyguards, guard_1)
-          pedConfig(guard_1)
-          guard_1Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_1)
-          HUD.SET_BLIP_AS_FRIENDLY(guard_1Blip, true)
-          HUD.SET_BLIP_SCALE(guard_1Blip, 0.8)
-          HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_1Blip, true)
-          table.insert(guardBlips, guard_1Blip)
+          if entities.take_control_of(guard_1) then
+            ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_1, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
+            ENTITY.SET_ENTITY_HEADING(guard_1, myHeading - 180)
+            ENTITY.SET_ENTITY_MAX_HEALTH(guard_1, 1000)
+            ENTITY.SET_ENTITY_HEALTH(guard_1, 1000, 0, 0)
+            PED.SET_PED_AS_GROUP_MEMBER(guard_1, myGroup)
+            PED.SET_PED_NEVER_LEAVES_GROUP(guard_1, true)
+            PED.SET_PED_ARMOUR(guard_1, 100)
+            PED.SET_PED_SUFFERS_CRITICAL_HITS(guard_1, false)
+            WEAPON.GIVE_WEAPON_TO_PED(guard_1, bGuardData.weaponHash.main, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(guard_1, true, bGuardData.weaponHash.main)
+            if bGuardData.weaponHash.sec ~= 0 then
+              WEAPON.GIVE_WEAPON_TO_PED(guard_1, bGuardData.weaponHash.sec, 9999, false, true)
+              WEAPON.SET_PED_INFINITE_AMMO(guard_1, true, bGuardData.weaponHash.sec)
+            end
+            pedConfig(guard_1)
+            guard_1Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_1)
+            HUD.SET_BLIP_AS_FRIENDLY(guard_1Blip, true)
+            HUD.SET_BLIP_SCALE(guard_1Blip, 0.8)
+            HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_1Blip, true)
+            table.insert(guardBlips, guard_1Blip)
+          end
           while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.b) do
             STREAMING.REQUEST_MODEL(bGuardData.modelHash.b)
             coroutine.yield()
           end
           guard_2 = PED.CREATE_PED(bGuardData.pedType, bGuardData.modelHash.b, 0.0, 0.0, 0.0, 0.0, true, false)
-          ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_2, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
-          ENTITY.SET_ENTITY_HEADING(guard_2, myHeading - 180)
-          ENTITY.SET_ENTITY_MAX_HEALTH(guard_2, 1000)
-          ENTITY.SET_ENTITY_HEALTH(guard_2, 1000, 0, 0)
-          PED.SET_PED_AS_GROUP_MEMBER(guard_2, myGroup)
-          PED.SET_PED_NEVER_LEAVES_GROUP(guard_2, true)
-          PED.SET_PED_ARMOUR(guard_2, 100)
-          WEAPON.GIVE_WEAPON_TO_PED(guard_2, bGuardData.weaponHash.main, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(guard_2, true, bGuardData.weaponHash.main)
-          if bGuardData.weaponHash.sec ~= 0 then
-            WEAPON.GIVE_WEAPON_TO_PED(guard_2, bGuardData.weaponHash.sec, 9999, false, true)
-            WEAPON.SET_PED_INFINITE_AMMO(guard_2, true, bGuardData.weaponHash.sec)
-          end
           table.insert(spawned_bodyguards, guard_2)
-          pedConfig(guard_2)
-          guard_2Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_2)
-          HUD.SET_BLIP_AS_FRIENDLY(guard_2Blip, true)
-          HUD.SET_BLIP_SCALE(guard_2Blip, 0.8)
-          HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_2Blip, true)
-          table.insert(guardBlips, guard_2Blip)
+          if entities.take_control_of(guard_2) then
+            ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_2, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
+            ENTITY.SET_ENTITY_HEADING(guard_2, myHeading - 180)
+            ENTITY.SET_ENTITY_MAX_HEALTH(guard_2, 1000)
+            ENTITY.SET_ENTITY_HEALTH(guard_2, 1000, 0, 0)
+            PED.SET_PED_AS_GROUP_MEMBER(guard_2, myGroup)
+            PED.SET_PED_NEVER_LEAVES_GROUP(guard_2, true)
+            PED.SET_PED_ARMOUR(guard_2, 100)
+            PED.SET_PED_SUFFERS_CRITICAL_HITS(guard_2, false)
+            WEAPON.GIVE_WEAPON_TO_PED(guard_2, bGuardData.weaponHash.main, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(guard_2, true, bGuardData.weaponHash.main)
+            if bGuardData.weaponHash.sec ~= 0 then
+              WEAPON.GIVE_WEAPON_TO_PED(guard_2, bGuardData.weaponHash.sec, 9999, false, true)
+              WEAPON.SET_PED_INFINITE_AMMO(guard_2, true, bGuardData.weaponHash.sec)
+            end
+            pedConfig(guard_2)
+            guard_2Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_2)
+            HUD.SET_BLIP_AS_FRIENDLY(guard_2Blip, true)
+            HUD.SET_BLIP_SCALE(guard_2Blip, 0.8)
+            HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_2Blip, true)
+            table.insert(guardBlips, guard_2Blip)
+          end
           while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.c) do
             STREAMING.REQUEST_MODEL(bGuardData.modelHash.c)
             coroutine.yield()
           end
           guard_3 = PED.CREATE_PED(bGuardData.pedType, bGuardData.modelHash.c, 0.0, 0.0, 0.0, 0.0, true, false)
-          ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_3, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
-          ENTITY.SET_ENTITY_HEADING(guard_3, myHeading - 180)
-          ENTITY.SET_ENTITY_MAX_HEALTH(guard_3, 1000)
-          ENTITY.SET_ENTITY_HEALTH(guard_3, 1000, 0, 0)
-          PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
-          PED.SET_PED_NEVER_LEAVES_GROUP(guard_3, true)
-          PED.SET_PED_ARMOUR(guard_3, 100)
-          WEAPON.GIVE_WEAPON_TO_PED(guard_3, bGuardData.weaponHash.main, 9999, false, true)
-          WEAPON.SET_PED_INFINITE_AMMO(guard_3, true, bGuardData.weaponHash.main)
-          if bGuardData.weaponHash.sec ~= 0 then
-            WEAPON.GIVE_WEAPON_TO_PED(guard_3, bGuardData.weaponHash.sec, 9999, false, true)
-            WEAPON.SET_PED_INFINITE_AMMO(guard_3, true, bGuardData.weaponHash.sec)
-          end
           table.insert(spawned_bodyguards, guard_3)
-          pedConfig(guard_3)
-          guard_3Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_3)
-          HUD.SET_BLIP_AS_FRIENDLY(guard_3Blip, true)
-          HUD.SET_BLIP_SCALE(guard_3Blip, 0.8)
-          HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_3Blip, true)
-          table.insert(guardBlips, guard_3Blip)
+          if entities.take_control_of(guard_3) then
+            ENTITY.SET_ENTITY_COORDS_NO_OFFSET(guard_3, myPos.x + forwardX * distMpl, myPos.y + forwardY * distMpl, myPos.z, true, false, false)
+            ENTITY.SET_ENTITY_HEADING(guard_3, myHeading - 180)
+            ENTITY.SET_ENTITY_MAX_HEALTH(guard_3, 1000)
+            ENTITY.SET_ENTITY_HEALTH(guard_3, 1000, 0, 0)
+            PED.SET_PED_AS_GROUP_MEMBER(guard_3, myGroup)
+            PED.SET_PED_NEVER_LEAVES_GROUP(guard_3, true)
+            PED.SET_PED_ARMOUR(guard_3, 100)
+            PED.SET_PED_SUFFERS_CRITICAL_HITS(guard_3, false)
+            WEAPON.GIVE_WEAPON_TO_PED(guard_3, bGuardData.weaponHash.main, 9999, false, true)
+            WEAPON.SET_PED_INFINITE_AMMO(guard_3, true, bGuardData.weaponHash.main)
+            if bGuardData.weaponHash.sec ~= 0 then
+              WEAPON.GIVE_WEAPON_TO_PED(guard_3, bGuardData.weaponHash.sec, 9999, false, true)
+              WEAPON.SET_PED_INFINITE_AMMO(guard_3, true, bGuardData.weaponHash.sec)
+            end
+            pedConfig(guard_3)
+            guard_3Blip = HUD.ADD_BLIP_FOR_ENTITY(guard_3)
+            HUD.SET_BLIP_AS_FRIENDLY(guard_3Blip, true)
+            HUD.SET_BLIP_SCALE(guard_3Blip, 0.8)
+            HUD.SHOW_HEADING_INDICATOR_ON_BLIP(guard_3Blip, true)
+            table.insert(guardBlips, guard_3Blip)
+          end
           dismissedGuards = false
           bg_unarmed      = false
         end)
@@ -1233,109 +1333,122 @@ billionaire_services:add_imgui(function()
               end
             end
             escortCar = VEHICLE.CREATE_VEHICLE(bGuardData.vehicle, pedPos.x - (pedForwardX * 10), pedPos.y - (pedForwardY * 10), pedPos.z, pedHeading, true, false, false)
-            VEHICLE.SET_VEHICLE_ON_GROUND_PROPERLY(escortCar, 5.0)
-            VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(escortCar, false)
-            VEHICLE.SET_VEHICLE_ALLOW_HOMING_MISSLE_LOCKON(escortCar, false, 0)
-            VEHICLE.SET_VEHICLE_STRONG(escortCar, true)
-            ENTITY.SET_ENTITY_INVINCIBLE(escortCar, true)
-            if VEHICLE.GET_VEHICLE_CLASS(escortCar) ~= 18 then
-              law = false
-              VEHICLE.SET_VEHICLE_MOD_KIT(escortCar, 0)
-              VEHICLE.SET_VEHICLE_NUMBER_PLATE_TEXT(escortCar, "MRDR INC")
-              VEHICLE.SET_VEHICLE_WINDOW_TINT(escortCar, 1) -- limo black windows
-              VEHICLE.SET_VEHICLE_COLOURS(escortCar, bGuardData.vehCol, bGuardData.vehCol)
-            else
-              law = true
-            end
-            VEHICLE.SET_VEHICLE_DISABLE_TOWING(escortCar, true)
-            carBlip = HUD.ADD_BLIP_FOR_ENTITY(escortCar)
-            HUD.SET_BLIP_SPRITE(carBlip, 229)
-            HUD.SET_BLIP_SCALE(carBlip, 1.14)
             table.insert(spawned_SUV, escortCar)
+            if entities.take_control_of(escortCar) then
+              VEHICLE.SET_VEHICLE_ON_GROUND_PROPERLY(escortCar, 5.0)
+              VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(escortCar, false)
+              VEHICLE.SET_VEHICLE_ALLOW_HOMING_MISSLE_LOCKON(escortCar, false, 0)
+              VEHICLE.SET_VEHICLE_STRONG(escortCar, true)
+              ENTITY.SET_ENTITY_INVINCIBLE(escortCar, true)
+              if VEHICLE.GET_VEHICLE_CLASS(escortCar) ~= 18 then
+                law = false
+                VEHICLE.SET_VEHICLE_MOD_KIT(escortCar, 0)
+                VEHICLE.SET_VEHICLE_NUMBER_PLATE_TEXT(escortCar, "MRDR INC")
+                VEHICLE.SET_VEHICLE_WINDOW_TINT(escortCar, 1) -- limo black windows
+                VEHICLE.TOGGLE_VEHICLE_MOD(escortCar, 18, true)
+                VEHICLE.SET_VEHICLE_COLOURS(escortCar, bGuardData.vehCol, bGuardData.vehCol)
+                VEHICLE.SET_VEHICLE_OCCUPANTS_TAKE_EXPLOSIVE_DAMAGE(escortCar, false)
+              else
+                law = true
+              end
+              VEHICLE.SET_VEHICLE_DISABLE_TOWING(escortCar, true)
+              carBlip = HUD.ADD_BLIP_FOR_ENTITY(escortCar)
+              HUD.SET_BLIP_SPRITE(carBlip, 229)
+              HUD.SET_BLIP_SCALE(carBlip, 1.14)
+            end
             escort:sleep(200)
             while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.a) do
               STREAMING.REQUEST_MODEL(bGuardData.modelHash.a)
               coroutine.yield()
             end
             escort_1 = PED.CREATE_PED_INSIDE_VEHICLE(escortCar, bGuardData.pedType, bGuardData.modelHash.a, -1, true, false)
-            PED.SET_PED_AS_GROUP_MEMBER(escort_1, myGroup)
-            PED.SET_PED_NEVER_LEAVES_GROUP(escort_1, true)
-            PED.SET_PED_CAN_EVASIVE_DIVE(escort_1, true)
-            PED.SET_DRIVER_AGGRESSIVENESS(escort_1, 1.0)
-            ENTITY.SET_ENTITY_MAX_HEALTH(escort_1, 1000)
-            ENTITY.SET_ENTITY_HEALTH(escort_1, 1000, 0, 0)
-            PED.SET_PED_ARMOUR(escort_1, 100)
-            WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash.main, 9999, false, true)
-            WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash.main)
-            if bGuardData.weaponHash.sec ~= 0 then
-              WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash.sec, 9999, false, true)
-              WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash.sec)
-            end
-            PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_1, escortCar, -1, 0, 0)
-            PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-            PED.SET_PED_CONFIG_FLAG(escort_1, 167, true)
-            PED.SET_PED_CONFIG_FLAG(escort_1, 251, true)
-            PED.SET_PED_CONFIG_FLAG(escort_1, 255, true)
             table.insert(spawned_escorts, escort_1)
-            pedConfig(escort_1)
-            escort_1Blip = HUD.ADD_BLIP_FOR_ENTITY(escort_1)
-            HUD.SET_BLIP_AS_FRIENDLY(escort_1Blip, true)
-            HUD.SET_BLIP_SCALE(escort_1Blip, 0.8)
-            HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_1Blip, true)
+            if entities.take_control_of(escort_1) then
+              PED.SET_PED_AS_GROUP_MEMBER(escort_1, myGroup)
+              PED.SET_PED_NEVER_LEAVES_GROUP(escort_1, true)
+              PED.SET_PED_CAN_EVASIVE_DIVE(escort_1, true)
+              PED.SET_DRIVER_AGGRESSIVENESS(escort_1, 1.0)
+              PED.SET_PED_SUFFERS_CRITICAL_HITS(escort_1, false)
+              ENTITY.SET_ENTITY_MAX_HEALTH(escort_1, 1000)
+              ENTITY.SET_ENTITY_HEALTH(escort_1, 1000, 0, 0)
+              PED.SET_PED_ARMOUR(escort_1, 100)
+              WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash.main, 9999, false, true)
+              WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash.main)
+              if bGuardData.weaponHash.sec ~= 0 then
+                WEAPON.GIVE_WEAPON_TO_PED(escort_1, bGuardData.weaponHash.sec, 9999, false, true)
+                WEAPON.SET_PED_INFINITE_AMMO(escort_1, true, bGuardData.weaponHash.sec)
+              end
+              PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_1, escortCar, -1, 0, 0)
+              PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+              PED.SET_PED_CONFIG_FLAG(escort_1, 167, true)
+              PED.SET_PED_CONFIG_FLAG(escort_1, 251, true)
+              PED.SET_PED_CONFIG_FLAG(escort_1, 255, true)
+              pedConfig(escort_1)
+              escort_1Blip = HUD.ADD_BLIP_FOR_ENTITY(escort_1)
+              HUD.SET_BLIP_AS_FRIENDLY(escort_1Blip, true)
+              HUD.SET_BLIP_SCALE(escort_1Blip, 0.8)
+              HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_1Blip, true)
+            end
             while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.b) do
               STREAMING.REQUEST_MODEL(bGuardData.modelHash.b)
               coroutine.yield()
             end
             escort_2 = PED.CREATE_PED_INSIDE_VEHICLE(escortCar, bGuardData.pedType, bGuardData.modelHash.b, 0, true, false)
-            PED.SET_PED_AS_GROUP_MEMBER(escort_2, myGroup)
-            PED.SET_PED_NEVER_LEAVES_GROUP(escort_2, true)
-            PED.SET_PED_ARMOUR(escort_2, 100)
-            ENTITY.SET_ENTITY_MAX_HEALTH(escort_2, 1000)
-            ENTITY.SET_ENTITY_HEALTH(escort_2, 1000, 0, 0)
-            WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash.main, 9999, false, true)
-            WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash.main)
-            if bGuardData.weaponHash.sec ~= 0 then
-              WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash.sec, 9999, false, true)
-              WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash.sec)
-            end
-            PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_2, escortCar, 0, 0, 0)
-            PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-            PED.SET_PED_CONFIG_FLAG(escort_2, 167, true)
-            PED.SET_PED_CONFIG_FLAG(escort_2, 251, true)
-            PED.SET_PED_CONFIG_FLAG(escort_2, 255, true)
             table.insert(spawned_escorts, escort_2)
-            pedConfig(escort_2)
-            escort_2Blip = HUD.ADD_BLIP_FOR_ENTITY(escort_2)
-            HUD.SET_BLIP_AS_FRIENDLY(escort_2Blip, true)
-            HUD.SET_BLIP_SCALE(escort_2Blip, 0.8)
-            HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_2Blip, true)
+            if entities.take_control_of(escort_2) then
+              PED.SET_PED_AS_GROUP_MEMBER(escort_2, myGroup)
+              PED.SET_PED_NEVER_LEAVES_GROUP(escort_2, true)
+              PED.SET_PED_ARMOUR(escort_2, 100)
+              PED.SET_PED_SUFFERS_CRITICAL_HITS(escort_2, false)
+              ENTITY.SET_ENTITY_MAX_HEALTH(escort_2, 1000)
+              ENTITY.SET_ENTITY_HEALTH(escort_2, 1000, 0, 0)
+              WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash.main, 9999, false, true)
+              WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash.main)
+              if bGuardData.weaponHash.sec ~= 0 then
+                WEAPON.GIVE_WEAPON_TO_PED(escort_2, bGuardData.weaponHash.sec, 9999, false, true)
+                WEAPON.SET_PED_INFINITE_AMMO(escort_2, true, bGuardData.weaponHash.sec)
+              end
+              PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_2, escortCar, 0, 0, 0)
+              PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+              PED.SET_PED_CONFIG_FLAG(escort_2, 167, true)
+              PED.SET_PED_CONFIG_FLAG(escort_2, 251, true)
+              PED.SET_PED_CONFIG_FLAG(escort_2, 255, true)
+              pedConfig(escort_2)
+              escort_2Blip = HUD.ADD_BLIP_FOR_ENTITY(escort_2)
+              HUD.SET_BLIP_AS_FRIENDLY(escort_2Blip, true)
+              HUD.SET_BLIP_SCALE(escort_2Blip, 0.8)
+              HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_2Blip, true)
+            end
             while not STREAMING.HAS_MODEL_LOADED(bGuardData.modelHash.c) do
               STREAMING.REQUEST_MODEL(bGuardData.modelHash.c)
               coroutine.yield()
             end
             escort_3 = PED.CREATE_PED_INSIDE_VEHICLE(escortCar, bGuardData.pedType, bGuardData.modelHash.c, 1, true, false)
-            PED.SET_PED_AS_GROUP_MEMBER(escort_3, myGroup)
-            PED.SET_PED_NEVER_LEAVES_GROUP(escort_3, true)
-            PED.SET_PED_ARMOUR(escort_3, 100)
-            ENTITY.SET_ENTITY_MAX_HEALTH(escort_1, 1000)
-            ENTITY.SET_ENTITY_HEALTH(escort_1, 1000, 0, 0)
-            WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash.main, 9999, false, true)
-            WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash.main)
-            if bGuardData.weaponHash.sec ~= 0 then
-              WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash.sec, 9999, false, true)
-              WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash.sec)
-            end
-            PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_3, escortCar, 1, 0, 0)
-            PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-            PED.SET_PED_CONFIG_FLAG(escort_3, 167, true)
-            PED.SET_PED_CONFIG_FLAG(escort_3, 251, true)
-            PED.SET_PED_CONFIG_FLAG(escort_3, 255, true)
             table.insert(spawned_escorts, escort_3)
-            pedConfig(escort_3)
-            escort_3Blip = HUD.ADD_BLIP_FOR_ENTITY(escort_3)
-            HUD.SET_BLIP_AS_FRIENDLY(escort_3Blip, true)
-            HUD.SET_BLIP_SCALE(escort_3Blip, 0.8)
-            HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_3Blip, true)
+            if entities.take_control_of(escort_3) then
+              PED.SET_PED_AS_GROUP_MEMBER(escort_3, myGroup)
+              PED.SET_PED_NEVER_LEAVES_GROUP(escort_3, true)
+              PED.SET_PED_ARMOUR(escort_3, 100)
+              PED.SET_PED_SUFFERS_CRITICAL_HITS(escort_3, false)
+              ENTITY.SET_ENTITY_MAX_HEALTH(escort_1, 1000)
+              ENTITY.SET_ENTITY_HEALTH(escort_1, 1000, 0, 0)
+              WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash.main, 9999, false, true)
+              WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash.main)
+              if bGuardData.weaponHash.sec ~= 0 then
+                WEAPON.GIVE_WEAPON_TO_PED(escort_3, bGuardData.weaponHash.sec, 9999, false, true)
+                WEAPON.SET_PED_INFINITE_AMMO(escort_3, true, bGuardData.weaponHash.sec)
+              end
+              PED.SET_PED_VEHICLE_FORCED_SEAT_USAGE(escort_3, escortCar, 1, 0, 0)
+              PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+              PED.SET_PED_CONFIG_FLAG(escort_3, 167, true)
+              PED.SET_PED_CONFIG_FLAG(escort_3, 251, true)
+              PED.SET_PED_CONFIG_FLAG(escort_3, 255, true)
+              pedConfig(escort_3)
+              escort_3Blip = HUD.ADD_BLIP_FOR_ENTITY(escort_3)
+              HUD.SET_BLIP_AS_FRIENDLY(escort_3Blip, true)
+              HUD.SET_BLIP_SCALE(escort_3Blip, 0.8)
+              HUD.SHOW_HEADING_INDICATOR_ON_BLIP(escort_3Blip, true)
+            end
             VEHICLE.SET_VEHICLE_ENGINE_ON(escortCar, true, false, false)
             gui.show_message("Private Security", "Your escort vehicle is waiting behind you.")
             escort:sleep(1000)
@@ -1356,6 +1469,7 @@ billionaire_services:add_imgui(function()
         dismissed  = true
         plyrWindow = false
         law        = false
+        sirenOn    = false
         script.run_in_fiber(function(dismissEscorts)
           if ENTITY.DOES_ENTITY_EXIST(escortCar) then
             if ENTITY.DOES_ENTITY_EXIST(escort_1) and not ENTITY.IS_ENTITY_DEAD(escort_1) then
@@ -1446,7 +1560,7 @@ billionaire_services:add_imgui(function()
     end
     if spawned_bodyguards[1] ~= nil or spawned_escorts[1] ~= nil then
       invincile, used = ImGui.Checkbox("God Mode", invincile, true)
-      widgetToolTip(false, "Turn God Mode on/off for bodyguards and escorts. When God Mode is on, ragdoll will be disabled for them.")
+      widgetToolTip(false, "Turn God Mode on/off for bodyguards and escorts. When God Mode is on, ragdoll will also be disabled for them.")
       if spawned_bodyguards[1] ~= nil then
         for _, g in ipairs(spawned_bodyguards) do
           script.run_in_fiber(function()
@@ -1539,7 +1653,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(g1Hp) < g1MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(guard_1) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##g1Hp") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_1, g1MaxHp, 0, 0)
                   end)
@@ -1550,7 +1664,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(g1Ar) < g1MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(guard_1) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##g1Ar") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_1, g1MaxAr)
                   end)
@@ -1564,7 +1678,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(g2Hp) < g2MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(guard_2) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##g2Hp") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_2, g2MaxHp, 0, 0)
                   end)
@@ -1575,7 +1689,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(g2Ar) < g2MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(guard_2) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##g2Ar") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_2, g1MaxAr)
                   end)
@@ -1589,7 +1703,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(g3Hp) < g3MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(guard_3) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##g3Hp") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_3, g3MaxHp, 0, 0)
                   end)
@@ -1600,7 +1714,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(g3Ar) < g3MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(guard_3) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##g3Ar") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_3, g3MaxAr)
                   end)
@@ -1614,7 +1728,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(e1Hp) < e1MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(escort_1) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##e1Hp") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_1, e1MaxHp, 0, 0)
                   end)
@@ -1625,7 +1739,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(e1Ar) < e1MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(escort_1) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##e1Ar") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(escort_1, e1MaxAr)
                   end)
@@ -1639,7 +1753,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(e2Hp) < e2MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(escort_2) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##e2Hp") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_2, e2MaxHp, 0, 0)
                   end)
@@ -1650,7 +1764,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(e2Ar) < e2MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(escort_2) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##e2Ar") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(escort_2, e2MaxAr)
                   end)
@@ -1664,7 +1778,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(e3Hp) < e3MaxHp then
               if not ENTITY.IS_ENTITY_DEAD(escort_3) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##e3Hp") then
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_3, e3MaxHp, 0, 0)
                   end)
@@ -1675,7 +1789,7 @@ billionaire_services:add_imgui(function()
             if math.ceil(e3Ar) < e3MaxAr then
               if not ENTITY.IS_ENTITY_DEAD(escort_3) then
                 ImGui.SameLine()
-                if ImGui.SmallButton("Refill") then
+                if ImGui.SmallButton("Refill##e3Ar") then
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(escort_3, e3MaxAr)
                   end)
@@ -2281,6 +2395,25 @@ billionaire_services:add_imgui(function()
           ImGui.Separator()
           ImGui.Spacing()
           if sittingInEscortCar then
+            ImGui.Dummy(110, 1);ImGui.SameLine()
+            if not disableInsultBtn then
+              if ImGui.Button("Insult People") then
+                script.run_in_fiber(function(insult)
+                  AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(escort_1, "GENERIC_WAR_CRY", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                  disableInsultBtn = true
+                  insult:sleep(2000)
+                  AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(escort_2, "GENERIC_WAR_CRY", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                  insult:sleep(2000)
+                  AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(escort_3, "GENERIC_WAR_CRY", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                  insult:sleep(2000)
+                  disableInsultBtn = false
+                end)
+              end
+            else
+              ImGui.BeginDisabled()
+              ImGui.Button("Insult People")
+              ImGui.EndDisabled()
+            end
             if not law then
               ImGui.Dummy(140, 1);ImGui.SameLine();ImGui.Text("Radio")
               if AUDIO.IS_VEHICLE_RADIO_ON(escortCar) then
@@ -2347,75 +2480,139 @@ billionaire_services:add_imgui(function()
                 end
               end
             end
-            if ImGui.Button("Drive To Waypoint") then
-              script.run_in_fiber(function()
-                local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
-                if HUD.DOES_BLIP_EXIST(waypoint) then
-                  destination = HUD.GET_BLIP_COORDS(waypoint)
-                else
-                  gui.show_error("Private Security", "Please set a waypoint on the map first!")
-                  return
+            if not driveToWp then
+              if ImGui.Button("Drive To Waypoint##escort") then
+                script.run_in_fiber(function()
+                  local waypoint = HUD.GET_FIRST_BLIP_INFO_ID(HUD.GET_WAYPOINT_BLIP_ENUM_ID())
+                  if HUD.DOES_BLIP_EXIST(waypoint) then
+                    destination = HUD.GET_BLIP_COORDS(waypoint)
+                  else
+                    gui.show_error("Private Security", "Please set a waypoint on the map first!")
+                    return
+                  end
+                  if escortLeftCar then
+                    TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                    TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                    TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                    PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                    PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                    PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                    TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                    TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                    PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                    escortLeftCar = false
+                    cruisin:sleep(5000)
+                  end
+                  if driveStarted then
+                    driveStarted = false
+                  end
+                  TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(escort_1, escortCar, destination.x, destination.y, destination.z, 19.5, 786603, 20.0) --old=2883621
+                  driveToWp       = true
+                  driveStarted    = false
+                  doingBurnout    = false
+                  doingDriveBy    = false
+                  doDonuts        = false
+                  taskInProgress  = true
+                  driveToWpChill  = true
+                  currentTask     = "driving to waypoint"
+                end)
+              end
+            else
+              if driveToWpChill then
+                if ImGui.Button("Hurry Up!##esWp") then
+                  script.run_in_fiber(function()
+                    AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(escort_1, "GENERIC_YES", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                    TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(escort_1, escortCar, destination.x, destination.y, destination.z, 42.0, 1074528293, 20.0)
+                    driveToWpChill = false
+                  end)
                 end
-                if escortLeftCar then
-                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-                  TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-                  TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-                  PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-                  TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-                  escortLeftCar = false
-                  cruisin:sleep(5000)
+              else
+                if ImGui.Button("Slow Down##esWp") then
+                  script.run_in_fiber(function()
+                    AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(escort_1, "GENERIC_YES", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                    TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(escort_1, escortCar, destination.x, destination.y, destination.z, 19.5, 786603, 20.0)
+                    driveToWpChill = true
+                  end)
                 end
-                TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(escort_1, escortCar, destination.x, destination.y, destination.z, 40, 1074528293, 20.0) --old=2883621
-                driveToWp       = true
-                driveStarted    = false
-                doingBurnout    = false
-                doingDriveBy    = false
-                doDonuts        = false
-                taskInProgress  = true
-                currentTask     = "driving to waypoint"
-              end)
-            end
-            ImGui.SameLine();
-            if ImGui.Button("Cruise Around") then
-              script.run_in_fiber(function(cruisin)
-                if escortLeftCar then
-                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
-                  TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
-                  TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
-                  PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
-                  PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
-                  PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
-                  TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
-                  TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
-                  PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
-                  escortLeftCar = false
-                  cruisin:sleep(5000)
-                end
-                TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 25, 786603)
-                cruisin:sleep(500)
-                driveStarted    = true
-                driveToWp       = false
-                doingBurnout    = false
-                doingDriveBy    = false
-                doDonuts        = false
-                taskInProgress  = true
-                currentTask     = "cruising around"
-              end)
-            end
-            if driveStarted or driveToWp then
+              end
               ImGui.SameLine()
-              if ImGui.Button(" Stop ") then
+              if ImGui.Button(" Stop ##esWp") then
+                script.run_in_fiber(function()
+                  TASK.CLEAR_PED_TASKS(escort_1)
+                  TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                  TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+                  TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
+                  driveToWp       = false
+                  wpReached       = false
+                  taskInProgress  = false
+                  currentTask     = "None."
+                end)
+              end
+            end
+            if not driveStarted then
+              if ImGui.Button("Cruise Around##escort") then
+                script.run_in_fiber(function(cruisin)
+                  if escortLeftCar then
+                    TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                    TASK.CLEAR_PED_SECONDARY_TASK(escort_2)
+                    TASK.CLEAR_PED_SECONDARY_TASK(escort_3)
+                    PED.SET_PED_CONFIG_FLAG(escort_1, 402, true)
+                    PED.SET_PED_CONFIG_FLAG(escort_2, 402, true)
+                    PED.SET_PED_CONFIG_FLAG(escort_3, 402, true)
+                    TASK.TASK_ENTER_VEHICLE(escort_1, escortCar, 10000, -1, 2.0, 1, 0, 0)
+                    TASK.TASK_ENTER_VEHICLE(escort_2, escortCar, 10000, 0, 2.0, 1, 0, 0)
+                    PED.SET_PED_INTO_VEHICLE(escort_3, escortCar, 1)
+                    escortLeftCar = false
+                    cruisin:sleep(5000)
+                  end
+                  if driveToWp then
+                    TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
+                    gui.show_message("Private Security", "Drive To Waypoint canceled. Going for a cruise instead...")
+                    driveToWp = false
+                  end
+                  TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 19.5, 786603)
+                  driveStarted    = true
+                  driveToWp       = false
+                  doingBurnout    = false
+                  doingDriveBy    = false
+                  doDonuts        = false
+                  taskInProgress  = true
+                  esChill         = true
+                  currentTask     = "cruising around"
+                end)
+              end
+            else
+              if esChill then
+                if ImGui.Button("Hurry Up!##esCr") then
+                  script.run_in_fiber(function()
+                    TASK.CLEAR_PED_TASKS(escort_1)
+                    TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                    TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+                    AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(escort_1, "GENERIC_YES", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                    TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 42.0, 1074528293)
+                    esChill = false
+                  end)
+                end
+              else
+                if ImGui.Button("Slow Down##esCr") then
+                  script.run_in_fiber(function()
+                    TASK.CLEAR_PED_TASKS(escort_1)
+                    TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
+                    TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
+                    AUDIO.PLAY_PED_AMBIENT_SPEECH_NATIVE(escort_1, "GENERIC_YES", "SPEECH_PARAMS_FORCE_SHOUTED", 0)
+                    TASK.TASK_VEHICLE_DRIVE_WANDER(escort_1, escortCar, 19.5, 786603)
+                    esChill = true
+                  end)
+                end
+              end
+              ImGui.SameLine()
+              if ImGui.Button(" Stop ##esCr") then
                 script.run_in_fiber(function()
                   TASK.CLEAR_PED_TASKS(escort_1)
                   TASK.CLEAR_PED_SECONDARY_TASK(escort_1)
                   TASK.CLEAR_PRIMARY_VEHICLE_TASK(escortCar)
                   TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
                   driveStarted    = false
-                  driveToWp       = false
                   wpReached       = false
                   taskInProgress  = false
                   currentTask     = "None."
@@ -2576,7 +2773,7 @@ billionaire_services:add_imgui(function()
   end
   if dbgWindow then
     ImGui.SetNextWindowSizeConstraints(450, 100, 600, 800)
-    ImGui.Begin("##bsDebug", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar)
+    ImGui.Begin("##bsDebug", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse)
     ImGui.Text("Billionaire Services Debug");ImGui.SameLine(380)
     if ImGui.Button("Close") then
       dbgWindow = false
@@ -2677,9 +2874,65 @@ billionaire_services:add_imgui(function()
         end)
       end
     end
+    rgbLights, used = ImGui.Checkbox("RGB Headlights", rgbLights, true)
+    ImGui.SameLine()
+    ImGui.PushItemWidth(100)
+    lightSpeed, used = ImGui.SliderInt("RGB Speed", lightSpeed, 1, 3)
+    ImGui.PopItemWidth()
+    local bunkerSupply  = stats.get_int("MATTOTALFORFACTORY5")
+    local bunkerProduct = stats.get_int("PRODTOTALFORFACTORY5")
+    ImGui.Text(tonumber(bunkerSupply))
+    ImGui.Text(tonumber(bunkerProduct))
     ImGui.End()
   end
   -------------------------------------------------------------------------------------------------------------
+end)
+script.register_looped("rgb headlights", function(rgb)
+  if rgbLights then
+    VEHICLE.TOGGLE_VEHICLE_MOD(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 22, true)
+    for i = 0, 14 do
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.9)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.8)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.7)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.6)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.5)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_XENON_LIGHT_COLOR_INDEX(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), i)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.4)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.3)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.2)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.1)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_XENON_LIGHT_COLOR_INDEX(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), i)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.2)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.3)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.4)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.5)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_XENON_LIGHT_COLOR_INDEX(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), i)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.6)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.7)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.8)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 0.9)
+      rgb:sleep(100 / lightSpeed)
+      VEHICLE.SET_VEHICLE_LIGHT_MULTIPLIER(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), 1.0)
+      VEHICLE.SET_VEHICLE_XENON_LIGHT_COLOR_INDEX(PED.GET_VEHICLE_PED_IS_USING(self.get_ped()), i)
+      rgb:sleep(100 / lightSpeed)
+    end
+  end
 end)
 script.register_looped("blipManager", function()
   if HUD.DOES_BLIP_EXIST(jetBlip) then
@@ -3311,7 +3564,7 @@ script.register_looped("misc", function(misc)
                 local g1Pos = ENTITY.GET_ENTITY_COORDS(guard_1, true)
                 local dist1  = SYSTEM.VDIST(g1Pos.x, g1Pos.y, g1Pos.z, playerPos.z, playerPos.y, playerPos.z)
                 -- TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(guard_1, playerPos.x, playerPos.y, playerPos.z, targetPlayer, 2.0, true, 0.5, 4.5, false, 1, false, -957453492, 60000) -- -957453492 = full auto firing pattern
-                  TASK.TASK_GO_STRAIGHT_TO_COORD(guard_1, playerPos.x - (playerFwdX * 2), playerPos.y - (playerFwdY * 2), playerPos.z, 3.0, 10000, playerHdng, 0.0)
+                  TASK.TASK_GO_STRAIGHT_TO_COORD(guard_1, playerPos.x - (playerFwdX * 2), playerPos.y - (playerFwdY * 2), playerPos.z, 3.0, 5000, playerHdng, 0.0)
                 if dist1 <= 20.0 then
                   TASK.TASK_COMBAT_PED(guard_1, targetPlayer, 0, 16)
                 end
@@ -3320,7 +3573,7 @@ script.register_looped("misc", function(misc)
                 local g2Pos = ENTITY.GET_ENTITY_COORDS(guard_2, true)
                 local dist2  = SYSTEM.VDIST(g2Pos.x, g2Pos.y, g2Pos.z, playerPos.z, playerPos.y, playerPos.z)
                 -- TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(guard_2, playerPos.x, playerPos.y, playerPos.z, targetPlayer, 2.0, true, 0.5, 4.5, false, 1, false, -957453492, 60000)
-                TASK.TASK_GO_STRAIGHT_TO_COORD(guard_2, playerPos.x, playerPos.y, playerPos.z, 3.0, 10000, playerHdng, 0.0)
+                TASK.TASK_GO_STRAIGHT_TO_COORD(guard_2, playerPos.x, playerPos.y, playerPos.z, 3.0, 5000, playerHdng, 0.0)
                 if dist2 <= 20.0 then
                   TASK.TASK_COMBAT_PED(guard_2, targetPlayer, 0, 16)
                 end
@@ -3329,7 +3582,7 @@ script.register_looped("misc", function(misc)
                 local g3Pos = ENTITY.GET_ENTITY_COORDS(guard_3, true)
                 local dist3  = SYSTEM.VDIST(g3Pos.x, g3Pos.y, g3Pos.z, playerPos.z, playerPos.y, playerPos.z)
                 -- TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(guard_3, playerPos.x, playerPos.y, playerPos.z, targetPlayer, 2.0, true, 0.5, 4.5, false, 1, false, -957453492, 60000)
-                TASK.TASK_GO_STRAIGHT_TO_COORD(guard_3, playerPos.x, playerPos.y, playerPos.z, 3.0, 10000, playerHdng, 0.0)
+                TASK.TASK_GO_STRAIGHT_TO_COORD(guard_3, playerPos.x, playerPos.y, playerPos.z, 3.0, 5000, playerHdng, 0.0)
                 if dist3 <= 20.0 then
                   TASK.TASK_COMBAT_PED(guard_3, targetPlayer, 0, 16)
                 end
@@ -3645,8 +3898,12 @@ script.register_looped("misc", function(misc)
             local deadEsMsg = true
             -- local playerPos = ENTITY.GET_ENTITY_COORDS(targetPlayer, true)
             -- TASK.TASK_VEHICLE_CHASE(escort_1, targetPlayer)
+            if law then
+              VEHICLE.SET_VEHICLE_SIREN(escortCar, true)
+              sirenOn = true
+            end
             -- TASK.TASK_VEHICLE_DRIVE_TO_COORD_LONGRANGE(escort_1, escortCar, playerPos.x, playerPos.y, playerPos.z, 40, 1074528293, 50.0)
-            TASK.TASK_VEHICLE_MISSION_PED_TARGET(escort_1, escortCar, targetPlayer, 6, 50, 24904187, 1.0, 0.1, true)
+            TASK.TASK_VEHICLE_MISSION_PED_TARGET(escort_1, escortCar, targetPlayer, 6, 100.0, 786468, 10.0, 3.0, true)
             TASK.TASK_DRIVE_BY(escort_2, targetPlayer, 0, 0.0, 0.0, 0.0, 100, 100, false, -957453492) --doDriveBy
             TASK.TASK_DRIVE_BY(escort_3, targetPlayer, 0, 0.0, 0.0, 0.0, 100, 100, false, -957453492) --//
             if ENTITY.IS_ENTITY_DEAD(escort_1) and ENTITY.IS_ENTITY_DEAD(escort_2) and ENTITY.IS_ENTITY_DEAD(escort_3) then
@@ -3664,15 +3921,23 @@ script.register_looped("misc", function(misc)
             TASK.CLEAR_PED_TASKS(escort_2)
             TASK.CLEAR_PED_TASKS(escort_3)
             TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
+            if law then
+              VEHICLE.SET_VEHICLE_SIREN(escortCar, false)
+              sirenOn = false
+            end
             esAutoTp = true
           end
         else
-          gui.show_message("Private Security", "Player Not Found! Falling back...")
+          gui.show_message("Private Security", "Player left the session! Falling back...")
           es_attack = false
           TASK.CLEAR_PED_TASKS(escort_1)
           TASK.CLEAR_PED_TASKS(escort_2)
           TASK.CLEAR_PED_TASKS(escort_3)
           TASK.TASK_VEHICLE_TEMP_ACTION(escort_1, escortCar, 1, 2000)
+          if law then
+            VEHICLE.SET_VEHICLE_SIREN(escortCar, false)
+            sirenOn = false
+          end
           esAutoTp = true
         end
       end
