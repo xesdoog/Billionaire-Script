@@ -215,7 +215,7 @@ local function coloredText(text, color)
   ImGui.PushStyleColor(ImGuiCol.Text, color[1]/255, color[2]/255, color[3]/255, color[4])
   ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
   ImGui.TextWrapped(text)
-  ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20)
+  ImGui.PopTextWrapPos()
   ImGui.PopStyleColor(1)
 end
 
