@@ -2,17 +2,18 @@
 Lua script for YimMenu that provides billionaire services for GTA V players.
 
 ## Features:
-### Private Jet Service:
+### Private Flight:
+#### ** Private Jet Service:
 
 ![image](https://github.com/xesdoog/Billionaire-Script/assets/66764345/8760ebbc-3f94-462b-acea-2dadbc4a7e6e)
 
 
-### Usage:
+#### Usage:
 1. Choose an airport from the dropdown list. A [Luxor Deluxe](https://static.wikia.nocookie.net/gtawiki/images/1/1f/LuxorDeluxe-GTAV-front.png/revision/latest/scale-to-width-down/1000?cb=20150614102306) will spawn there.
    > If your jet is **at least 1km away from you**, a new button will appear in the UI. Use it to instantly board your private jet.
-3. Go to your private jet *(It will be marked with a plane blip ![radar_player_plane](https://github.com/xesdoog/Billionaire-Script/assets/66764345/2cd7a70c-77c9-4c24-806d-fe744e216009)
+2. Go to your private jet *(It will be marked with a plane blip ![radar_player_plane](https://github.com/xesdoog/Billionaire-Script/assets/66764345/2cd7a70c-77c9-4c24-806d-fe744e216009)
  on the map).*
-4. Enter the jet then choose one of the options that will appear.
+3. Enter the jet then choose one of the options that will appear.
 - Available options:
   - **Fly Around Waypoint**:
     - Place a waypoint on the map then press this button. Your pilot will take off and fly towards the waypoint. Unfortunately, you can't land a private jet wherever you want so when you get to your destination, the pilot will keep circling around the area.
@@ -27,6 +28,25 @@ Lua script for YimMenu that provides billionaire services for GTA V players.
 
 > [!NOTE]
 > GTA V AI is a bit outdated. The pilot will sometimes struggle to find the correct runway approach and thus he will keep flying in circles while dangerously low until he either lands the jet or crashes it.
+
+#### ** Private Helicopter Service:
+#### Usage:
+1. Choose a Helicopter model from the dropdown list and press the spawn button.
+   > If you happen to be in the water when you call your helicopter, it will instead spawn a little bit further away from you and the pilot will not land it. You will instead have to either use a button to directly teleport into the helicopter or swim to shore then use the button to ask your pilot to land the heli in front of you. Both buttons will automatically appear when you are a certain distance away from your helicopter.
+2. Get in your helicopter and choose one of the options that will appear.
+- Available options:
+  - **Fly To Waypoint**:
+    - Place a waypoint on the map then press this button. Your pilot will take off and fly towards it. Once you're there, perss **Stop** to hover over the location. You can then press **Land Here** to instruct your pilot to attempt to land the helicopter.
+  - **Preset Destinations**:
+    - Open the preset list and select one of the helipads available then press "**Go**". Your pilot will fly to the location then land on the helipad. You can sit back and enjoy the trip or press **Skip** to teleport there.
+  - **Rappel Down**
+    - This option has 2 requirements:
+      1. Your helicopter has to be one of 3 models: "**Annihilator**", "**Maverick**", or "**Police Maverick**".
+      2. You have to be sitting in the back of the heli (the script has buttons that you can use to switch seats at any time) and the heli itself has to be hovering mid-air.
+      - Once the above requirements are met, you can press this button to rappel down from the helicopter. A rope will appear shortly after you press the button. Once it reaches the ground, your character will automatically use the rope to descend. You don't have to do anything. Basically after you press the **Rappel Down** button, sit back and let it do its thing.
+   - Hidden Features:
+     - If you enter your helicopter with bodyguards (spawned with this script of course) then decide to jump out and parachute, your bodyguards will also use their parachutes. If you don't open yours, they won't open theirs either. That's how loyal your bodyguards are.
+     - If you dismiss your helicopter in mid-air, your pilot will attempt to land it before letting you out. If you don't want to wait for him to land, you can jump out. Once you do, he will say goodbye and leave.
 
 ### Private Security Service:
 
