@@ -4,7 +4,8 @@ Lua script for YimMenu that provides billionaire services for GTA V players.
 ## Features:
 ### Private Jet Service:
 
-![billionaire_services](https://github.com/xesdoog/Billionaire-Script/assets/66764345/d705d7cd-050d-4d20-bf35-0e304f22cec6)
+![image](https://github.com/xesdoog/Billionaire-Script/assets/66764345/8760ebbc-3f94-462b-acea-2dadbc4a7e6e)
+
 
 ### Usage:
 1. Choose an airport from the dropdown list. A [Luxor Deluxe](https://static.wikia.nocookie.net/gtawiki/images/1/1f/LuxorDeluxe-GTAV-front.png/revision/latest/scale-to-width-down/1000?cb=20150614102306) will spawn there.
