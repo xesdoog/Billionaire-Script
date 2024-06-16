@@ -381,6 +381,9 @@ local function widgetSound(sound)
     if sound == "Delete" then
       AUDIO.PLAY_SOUND_FRONTEND(-1, "DELETE", "HUD_DEATHMATCH_SOUNDSET", true)
     end
+    if sound == "W_Pickup" then
+      AUDIO.PLAY_SOUND_FRONTEND(-1, "PICK_UP_WEAPON", "HUD_FRONTEND_CUSTOM_SOUNDSET", true)
+    end
   end)
 end
 
@@ -555,20 +558,34 @@ local function nearestPed(closeTo)
   end)
   return randomPed
 end
-local function giveWeapon(ped, weapon, ped_category)
-  if ENTITY.DOES_ENTITY_EXIST(ped) then
-    if not WEAPON.HAS_PED_GOT_WEAPON(ped, weapon, false) then
-      WEAPON.GIVE_DELAYED_WEAPON_TO_PED(ped, weapon, 9999, false)
-    else
-      gui.show_error("Private Security", "Your "..ped_category.." already have this weapon.")
+local function giveWeapon(pedTable, weapon, weaponName, ped_category)
+  local sound
+  for _, ped in ipairs(pedTable) do
+    if ENTITY.DOES_ENTITY_EXIST(ped) then
+      if not WEAPON.HAS_PED_GOT_WEAPON(ped, weapon, false) then
+        WEAPON.GIVE_DELAYED_WEAPON_TO_PED(ped, weapon, 9999, false)
+        gui.show_message("Private Security", "Added "..weaponName.." to your".. ped_category.."' inventory.")
+        sound = "W_Pickup"
+      else
+        gui.show_error("Private Security", "Your "..ped_category.." already have this weapon.")
+        sound = "Error"
+      end
     end
   end
+  return sound
 end
-local function removeWeapon(ped, weapon, ped_category)
-  if WEAPON.HAS_PED_GOT_WEAPON(ped, weapon, false) then
-    WEAPON.REMOVE_WEAPON_FROM_PED(ped, weapon)
-  else
-    gui.show_error("Private Security", "Your "..ped_category.." do not have this weapon.")
+local function removeWeapon(pedTable, weapon, ped_category)
+  local sound
+  for _, ped in ipairs(pedTable) do
+    if WEAPON.HAS_PED_GOT_WEAPON(ped, weapon, false) then
+      WEAPON.REMOVE_WEAPON_FROM_PED(ped, weapon)
+      gui.show_message("Private Security", "Removed "..weaponName.." from your".. ped_category.."' inventory.")
+      sound = "Delete"
+    else
+      gui.show_error("Private Security", "Your "..ped_category.." do not have this weapon.")
+      sound = "Error"
+    end
+    return sound
   end
 end
 billionaire_services:add_imgui(function()
@@ -1063,10 +1080,15 @@ billionaire_services:add_imgui(function()
                 else
                   spawnPos = VEHICLE.FIND_SPAWN_COORDINATES_FOR_HELI(self.get_ped())
                 end
+                local counter  	   = 0
                 while not STREAMING.HAS_MODEL_LOADED(heliModel) do
                   STREAMING.REQUEST_MODEL(heliModel)
-                  STREAMING.REQUEST_MODEL(heliPilotModel)
-                  coroutine.yield()
+                  pvtHeli:yield()
+                  if counter > 100 then
+                    return
+                  else
+                    counter = counter + 1
+                  end
                 end
                 pHeli = VEHICLE.CREATE_VEHICLE(heliModel, 0.0, 0.0, 0.0, ENTITY.GET_ENTITY_HEADING(self.get_ped()) - 90, true, false, false)
                 while not STREAMING.HAS_MODEL_LOADED(heliPilotModel) do
@@ -2278,7 +2300,7 @@ billionaire_services:add_imgui(function()
               if g1Hp < g1MaxHp - 10 then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##g1Hp") then
-                  widgetSound("Select")
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_1, g1MaxHp, 0, 0)
                   end)
@@ -2288,6 +2310,7 @@ billionaire_services:add_imgui(function()
               if math.ceil(g1Ar) < g1MaxAr then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##g1Ar") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_1, g1MaxAr)
                   end)
@@ -2304,6 +2327,7 @@ billionaire_services:add_imgui(function()
               if g2Hp < g2MaxHp - 10 then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##g2Hp") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_2, g2MaxHp, 0, 0)
                   end)
@@ -2313,6 +2337,7 @@ billionaire_services:add_imgui(function()
               if math.ceil(g2Ar) < g2MaxAr then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##g2Ar") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_2, g1MaxAr)
                   end)
@@ -2329,6 +2354,7 @@ billionaire_services:add_imgui(function()
               if g3Hp < g3MaxHp - 10 then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##g3Hp") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(guard_3, g3MaxHp, 0, 0)
                   end)
@@ -2338,6 +2364,7 @@ billionaire_services:add_imgui(function()
               if math.ceil(g3Ar) < g3MaxAr then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##g3Ar") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(guard_3, g3MaxAr)
                   end)
@@ -2354,6 +2381,7 @@ billionaire_services:add_imgui(function()
               if e1Hp < e1MaxHp - 10 then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##e1Hp") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_1, e1MaxHp, 0, 0)
                   end)
@@ -2363,6 +2391,7 @@ billionaire_services:add_imgui(function()
               if math.ceil(e1Ar) < e1MaxAr then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##e1Ar") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(escort_1, e1MaxAr)
                   end)
@@ -2379,6 +2408,7 @@ billionaire_services:add_imgui(function()
               if e2Hp < e2MaxHp - 10 then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##e2Hp") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_2, e2MaxHp, 0, 0)
                   end)
@@ -2388,6 +2418,7 @@ billionaire_services:add_imgui(function()
               if math.ceil(e2Ar) < e2MaxAr then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##e2Ar") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(escort_2, e2MaxAr)
                   end)
@@ -2404,6 +2435,7 @@ billionaire_services:add_imgui(function()
               if e3Hp < e3MaxHp - 10 then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##e3Hp") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     ENTITY.SET_ENTITY_HEALTH(escort_3, e3MaxHp, 0, 0)
                   end)
@@ -2413,6 +2445,7 @@ billionaire_services:add_imgui(function()
               if math.ceil(e3Ar) < e3MaxAr then
                 ImGui.SameLine()
                 if ImGui.SmallButton("Refill##e3Ar") then
+                  widgetSound("Pickup")
                   script.run_in_fiber(function()
                     PED.SET_PED_ARMOUR(escort_3, e3MaxAr)
                   end)
@@ -2441,38 +2474,26 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##melee") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##melee") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##melee") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##melee") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##melee2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2487,38 +2508,27 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##pistols") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##pistols") then
                 widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##pistols") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##pistols") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##pistols2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
 
@@ -2534,38 +2544,26 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##smg") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##smg") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##smg") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##smg") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##smg2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2580,38 +2578,26 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##sg") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##sg") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##sg") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##sg") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##sg2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2626,38 +2612,26 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##ar") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##ar") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##ar") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##ar") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##ar2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2672,38 +2646,26 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##mg") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##mg") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##mg") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##mg") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##mg2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2718,38 +2680,26 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##sr") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##sr") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##sr") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##sr") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##sr2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2764,38 +2714,26 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##hvy") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##hvy") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##hvy") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##hvy") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##hvy2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2810,38 +2748,26 @@ billionaire_services:add_imgui(function()
             local weaponName  = weapons.get_weapon_display_name(selectedWpn)
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##gr") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
                 bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##gr") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##gr") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
                 es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##gr") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##gr2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2862,36 +2788,26 @@ billionaire_services:add_imgui(function()
             end
             if spawned_bodyguards[1] ~= nil then
               if ImGui.Button("Give To Bodyguards##misc") then
-                widgetSound("Pickup")
-                giveWeapon(guard_1, selectedWpn, "bodyguards")
-                giveWeapon(guard_2, selectedWpn, "bodyguards")
-                giveWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Bodyguards' inventory.")
+                sound = giveWeapon(spawned_bodyguards, selectedWpn, weaponName, "bodyguards")
+                bg_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
               if ImGui.Button(" Remove ##misc") then
-                widgetSound("Delete")
-                removeWeapon(guard_1, selectedWpn, "bodyguards")
-                removeWeapon(guard_2, selectedWpn, "bodyguards")
-                removeWeapon(guard_3, selectedWpn, "bodyguards")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Bodyguards' inventory.")
+                sound = removeWeapon(spawned_bodyguards, selectedWpn, "bodyguards")
+                widgetSound(sound)
               end
             end
             if spawned_escorts[1] ~= nil then
               if ImGui.Button("Give To Escorts##misc") then
-                widgetSound("Pickup")
-                giveWeapon(escort_1, selectedWpn, "escorts")
-                giveWeapon(escort_2, selectedWpn, "escorts")
-                giveWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Added "..weaponName.." to your Escorts' inventory.")
+                sound = giveWeapon(spawned_escorts, selectedWpn, weaponName, "escorts")
+                es_unarmed = false
+                widgetSound(sound)
               end
               ImGui.SameLine()
-              if ImGui.Button(" Remove ##misc") then
-                widgetSound("Delete")
-                removeWeapon(escort_1, selectedWpn, "escorts")
-                removeWeapon(escort_2, selectedWpn, "escorts")
-                removeWeapon(escort_3, selectedWpn, "escorts")
-                gui.show_message("Private Security", "Removed "..weaponName.." from your Escorts' inventory.")
+              if ImGui.Button(" Remove ##misc2") then
+                sound = removeWeapon(spawned_escorts, selectedWpn, "escorts")
+                widgetSound(sound)
               end
             end
           end
@@ -2899,7 +2815,7 @@ billionaire_services:add_imgui(function()
           if spawned_bodyguards[1] ~= nil then
             ImGui.Text("Bodyguards:")
             if ImGui.Button("Give All Weapons") then
-              widgetSound("Pickup")
+              widgetSound("W_Pickup")
               script.run_in_fiber(function ()
                 for _, wpn in ipairs(allWeapons) do
                   for _, bg in ipairs(spawned_bodyguards) do
@@ -3724,12 +3640,6 @@ billionaire_services:add_imgui(function()
       lightSpeed, used = ImGui.SliderInt("RGB Speed", lightSpeed, 1, 3)
       ImGui.PopItemWidth()
     end
-    --[[
-    local bunkerSupply  = stats.get_int("MATTOTALFORFACTORY5")
-    local bunkerProduct = stats.get_int("PRODTOTALFORFACTORY5")
-    ImGui.Text(tonumber(bunkerSupply))
-    ImGui.Text(tonumber(bunkerProduct))
-    ]]
     ImGui.End()
   end
   -------------------------------------------------------------------------------------------------------------
