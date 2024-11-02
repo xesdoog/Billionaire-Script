@@ -18,12 +18,12 @@ jobs:
             owner: owner,
             repo: repo,
           });
-    
-          for release in releases {
+              
+          for (let rel in releases) {
             await github.rest.repos.deleteRelease({
               owner: owner,
               repo: repo,
-              release_id: release.id,
+              release_id: rel.id,
             });
-            console.log(`Deleted release with ID ${release.id}`);
+            console.log(`Deleted release with ID ${rel.id}`);
           }
