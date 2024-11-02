@@ -9,23 +9,6 @@ jobs:
     - uses: actions/checkout@master
     - name: install github-remove
       id: github_remove
-      run: npm install --save github-remove-all-releases
-    - name: Todo Deleto Cuz
-      id: del_all
-      uses: actions/github-script@v7
-      with:
-        script: |
-          var githubRemoveAllReleases = require('github-remove-all-releases');
-          var AUTH = {
-            type: 'oauth',
-            token: github.token,
-          };
-          const owner = context.repo.owner;
-          const repo  = context.repo.repo;
-          const callBack = function() { 
-            console.log("What?");
-          };
-          const filter = function() { 
-            return true;
-          };
-          githubRemoveAllReleases(AUTH, owner, repo, callBack(), [filter()])
+      run: |
+        npm install --global github-remove-all-releases
+        github-remove-all-releases ${{ github.repository_owner }} ${{ github.event.repository.name }}
