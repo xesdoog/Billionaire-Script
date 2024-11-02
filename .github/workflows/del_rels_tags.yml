@@ -22,12 +22,10 @@ jobs:
           };
           const owner = context.repo.owner;
           const repo  = context.repo.repo;
-          callBack(() => { 
+          const callBack = function() { 
             console.log("What?");
-          });
-          
-          filter(() => {
-            return true
-          });
-          
+          };
+          const filter = function() { 
+            return true;
+          };
           githubRemoveAllReleases(AUTH, owner, repo, callBack(), [filter()])
