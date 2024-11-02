@@ -1,0 +1,21 @@
+on:
+  workflow_dispatch:
+
+jobs:
+  delete_all:
+    runs-on: ubuntu-latest
+    name: Delete Releases & Tags
+    steps:
+    - uses: actions/checkout@master
+    - name: Todo Deleto Cuz
+      id: del_all
+      run: |
+        for num in `gh release list 2>/dev/null | awk '{print $1}'`; do
+          gh release delete $num -y
+        done
+
+        for num in `gh api repos/:owner/:repo/tags | jq -r '.[].name'`; do
+          gh api repos/:owner/:repo/git/refs/tags/${num} -X DELETE
+          console.log(`Deleted tag ${num}`);
+        done
+      shell: bash
