@@ -9,6 +9,7 @@ jobs:
     - uses: actions/checkout@master
     - name: Todo Deleto Cuz
       id: del_all
+      uses: actions/github-script@v7
       with:
         script: |
           const owner = context.repo.owner;
