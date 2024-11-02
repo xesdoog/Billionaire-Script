@@ -7,6 +7,9 @@ jobs:
     name: Delete Releases & Tags
     steps:
     - uses: actions/checkout@master
+    - name: install github-remove
+      id: github_remove
+      run: npm install --global github-remove-all-releases
     - name: Todo Deleto Cuz
       id: del_all
       uses: actions/github-script@v7
@@ -14,20 +17,5 @@ jobs:
         script: |
           const owner = context.repo.owner;
           const repo = context.repo.repo;
-          const releases = await github.rest.repos.listReleases({
-            owner: owner,
-            repo: repo,
-          });
-          for (let rel in releases.data) {
-            console.log(`rel ${rel}`);
-            if (rel && rel.id) {
-              await github.rest.repos.deleteRelease({
-                owner: owner,
-                repo: repo,
-                release_id: rel.id,
-              });
-              console.log(`Deleted release with ID ${rel.id}`);
-            } else {
-              console.log("No release found!");
-            }
-          }
+          var githubRemoveAllReleases = require('github-remove-all-releases');
+          github-remove-all-releases owner repo
