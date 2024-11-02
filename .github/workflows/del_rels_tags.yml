@@ -7,10 +7,10 @@ jobs:
     name: Delete Releases & Tags
     steps:
     - uses: actions/checkout@master
-    - name: install github-remove
+    - name: github-remove-all
       id: github_remove
       env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         npm install --global github-remove-all-releases
-        github-remove-all-releases ${{ github.repository_owner }} ${{ github.event.repository.name }}
+        github-remove-all-releases ${{ github.repository_owner }} ${{ github.event.repository.name }} -t ${{ secrets.GITHUB_TOKEN }}
