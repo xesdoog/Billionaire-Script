@@ -18,16 +18,15 @@ jobs:
             owner: owner,
             repo: repo,
           });
-          
-          if (releases && releases.data && releases.data.id) {
-            for (let rel in releases) {
+          for (let rel in releases) {
+            if (rel && rel.data && rel.data.id) {
               await github.rest.repos.deleteRelease({
                 owner: owner,
                 repo: repo,
                 release_id: rel.data.id,
               });
               console.log(`Deleted release with ID ${rel.data.id}`);
+            } else {
+              console.log("No release found!");
             }
-          } else {
-            console.log("No latest release found or failed to retrieve it.");
           }
