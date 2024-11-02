@@ -12,10 +12,11 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        for i in `gh release list 2>/dev/null | awk '{print $1}'`; do
-          gh release delete $i -y
+        gh release list \
+        sed 's/|/ /' | awk '{print $1, $8}' \
+        while read -r line; do
+          gh release delete -y "$line";
         done
-        
         for tag in `gh api repos/:owner/:repo/tags | jq -r '.[].name'`; do
           gh api repos/:owner/:repo/git/refs/tags/${tag} -X DELETE
         done
