@@ -9,8 +9,6 @@ jobs:
     - uses: actions/checkout@master
     - name: Todo Deleto Cuz
       id: del_all
-      env:
-        GH_TOKEN: ${{ github.token }}
       with:
         script: |
           const owner = context.repo.owner;
