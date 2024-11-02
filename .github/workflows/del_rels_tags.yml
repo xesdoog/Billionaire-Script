@@ -16,7 +16,10 @@ jobs:
       with:
         script: |
           var githubRemoveAllReleases = require('github-remove-all-releases');
+          var AUTH = {
+            type: 'oauth',
+            token: github.token,
+          };
           const owner = context.repo.owner;
           const repo  = context.repo.repo;
-          const token = github.token
-          githubRemoveAllReleases(token, owner, repo)
+          githubRemoveAllReleases(AUTH, owner, repo)
