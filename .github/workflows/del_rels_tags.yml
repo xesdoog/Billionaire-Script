@@ -9,7 +9,7 @@ jobs:
     - uses: actions/checkout@master
     - name: install github-remove
       id: github_remove
-      run: npm install --global github-remove-all-releases
+      run: npm install --save github-remove-all-releases
     - name: Todo Deleto Cuz
       id: del_all
       uses: actions/github-script@v7
