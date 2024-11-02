@@ -9,6 +9,8 @@ jobs:
     - uses: actions/checkout@master
     - name: Todo Deleto Cuz
       id: del_all
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         for num in `gh release list 2>/dev/null | awk '{print $1}'`; do
           gh release delete $num -y
