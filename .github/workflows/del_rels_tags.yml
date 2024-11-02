@@ -16,6 +16,6 @@ jobs:
 
         for num in `gh api repos/:owner/:repo/tags | jq -r '.[].name'`; do
           gh api repos/:owner/:repo/git/refs/tags/${num} -X DELETE
-          console.log(`Deleted tag ${num}`);
+          echo '✓ Deleted tag' $num
         done
       shell: bash
